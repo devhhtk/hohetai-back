@@ -1,0 +1,178 @@
+{
+  "test_1_rotwood_behemoth": {
+    "engine": {
+      "primary": {
+        "morph": {
+          "name": "Rotwood Behemoth",
+          "tier": "beast",
+          "prompt": "A massive quadrupedal beast made of living wood and moss, with branch-like antlers, glowing amber eyes, clawed feet, and red mushroom patches growing from its bark-like hide. Its body is ancient, gnarled, and powerful, like a living tree that learned to walk.",
+          "tags": ["behemoth", "beast", "wood", "moss"],
+          "annotation_features": ["BRANCH ANTLERS", "MOSS PATCHES", "GLOWING EYES", "CLAWED FEET"]
+        },
+        "mutation": null
+      },
+      "evolution": { "key": "vertebrate", "desc": "A complex vertebrate creature." },
+      "intelligence": { "level": "cunning" },
+      "element": {
+        "primary": { "name": "nature", "weight": 0.72 },
+        "secondary": { "name": "earth", "weight": 0.28 }
+      },
+      "palette": {
+        "name": "forest_decay",
+        "colors": ["deep moss green", "bark brown", "amber glow"]
+      },
+      "pattern": { "name": "Organic Overgrowth" },
+      "domain": "mythological",
+      "trope": { "key": "terratrope", "name": "Terratrope" }
+    },
+    "audio": {
+      "complexity": 0.62, "intensity": 0.55,
+      "harmonic_ratio": 0.48, "timbre_complexity": 0.41,
+      "brightness": 0.38, "duration_sec": 22.5,
+      "duration_ms": 22500, "waveform_hash": "abc123def456"
+    },
+    "context": {
+      "user_id": "test-user-001",
+      "residence_region": "temperate",
+      "hemisphere": "northern",
+      "generation_number": 6
+    },
+    "card": {
+      "creature_name": "Rotwood Behemoth",
+      "flavor_text": "When it finally lies down, a new grove rises in its shadow.",
+      "catalog_id": "AM-00006"
+    }
+  },
+
+  "test_2_tideplate_goliath_lucky13": {
+    "engine": {
+      "primary": {
+        "morph": {
+          "name": "Tideplate Goliath",
+          "tier": "beast",
+          "prompt": "A stout armored amphibian creature with overlapping teal and rust-colored armor plates, dorsal spikes along its back, a thick curving tail, and one large gentle eye. Low-slung, powerful build like a living tank.",
+          "tags": ["goliath", "beast", "armored", "amphibian"],
+          "annotation_features": ["ARMOR PLATES", "DORSAL SPIKES", "TAIL CURVE", "EYE"]
+        },
+        "mutation": null
+      },
+      "evolution": { "key": "vertebrate", "desc": "A complex vertebrate creature." },
+      "intelligence": { "level": "aware" },
+      "element": {
+        "primary": { "name": "water", "weight": 0.68 }
+      },
+      "palette": {
+        "name": "tide_iron",
+        "colors": ["slate teal", "rust copper", "seafoam"]
+      },
+      "pattern": { "name": "Overlapping Plates" },
+      "domain": "natural",
+      "trope": { "key": "aquatrope", "name": "Aquatrope" }
+    },
+    "audio": {
+      "complexity": 0.45, "intensity": 0.40,
+      "harmonic_ratio": 0.55, "timbre_complexity": 0.35,
+      "brightness": 0.42, "duration_sec": 13.013,
+      "duration_ms": 13013, "waveform_hash": "def789ghi012"
+    },
+    "context": {
+      "user_id": "test-user-001",
+      "residence_region": "coastal",
+      "hemisphere": "northern",
+      "generation_number": 4
+    },
+    "card": {
+      "creature_name": "Tideplate Goliath",
+      "flavor_text": "Slow to move, but every step reshapes the shoreline.",
+      "catalog_id": "AM-00004"
+    }
+  },
+
+  "test_3_blazefang_bruiser": {
+    "engine": {
+      "primary": {
+        "morph": {
+          "name": "Blazefang Bruiser",
+          "tier": "beast",
+          "prompt": "A squat, rotund fire-bellied amphibian bruiser with thick scaly skin, an enormous wide mouth, tiny stubby arms with sharp claws, and a bright orange underbelly. Orange fire-like frills around its head and down its back. Beady expressive eyes. Compact and powerful like a living fireball.",
+          "tags": ["bruiser", "beast", "fire", "amphibian"],
+          "annotation_features": ["FIRE FRILLS", "ARMORED BELLY", "CLAWED HANDS", "BEADY EYES"]
+        },
+        "mutation": null
+      },
+      "evolution": { "key": "vertebrate", "desc": "A complex vertebrate creature." },
+      "intelligence": { "level": "reactive" },
+      "element": {
+        "primary": { "name": "fire", "weight": 0.80 }
+      },
+      "palette": {
+        "name": "volcanic_core",
+        "colors": ["dark charcoal", "molten orange", "bright flame yellow"]
+      },
+      "pattern": { "name": "Ember Cracks" },
+      "domain": "mythological",
+      "trope": { "key": "pyrotrope", "name": "Pyrotrope" }
+    },
+    "audio": {
+      "complexity": 0.72, "intensity": 0.80,
+      "harmonic_ratio": 0.35, "timbre_complexity": 0.55,
+      "brightness": 0.65, "duration_sec": 8.5,
+      "duration_ms": 8500, "waveform_hash": "jkl345mno678"
+    },
+    "context": {
+      "user_id": "test-user-001",
+      "residence_region": "desert",
+      "hemisphere": "northern",
+      "generation_number": 3
+    },
+    "card": {
+      "creature_name": "Blazefang Bruiser",
+      "flavor_text": "Laughs louder as the flames grow higher.",
+      "catalog_id": "AM-00003"
+    }
+  },
+
+  "test_4_microbial_whisper": {
+    "engine": {
+      "primary": {
+        "morph": {
+          "name": "Radiolarian",
+          "tier": "microbial",
+          "prompt": "A spherical microscopic organism with radiating needle-like spines extending in all directions. Its body is a translucent glass-like orb with intricate geometric lattice structures visible inside. Tiny organelles glow faintly within. It looks like a living jewel under a microscope.",
+          "tags": ["radiolarian", "microbial", "spiny"],
+          "annotation_features": ["RADIAL SPINES", "GLASS ORB BODY", "LATTICE STRUCTURE", "GLOWING ORGANELLES"]
+        },
+        "mutation": null
+      },
+      "evolution": { "key": "single-cell", "desc": "A microscopic single-celled organism." },
+      "intelligence": { "level": "basic" },
+      "element": {
+        "primary": { "name": "nature", "weight": 0.66 }
+      },
+      "palette": {
+        "name": "phantom_silk",
+        "colors": ["pale gray", "midnight blue", "luminous green"]
+      },
+      "pattern": { "name": "Mineral Lattice" },
+      "domain": "mythological",
+      "trope": { "key": "primatrope", "name": "Primatrope" }
+    },
+    "audio": {
+      "complexity": 0.10, "intensity": 0.05,
+      "harmonic_ratio": 0.15, "timbre_complexity": 0.08,
+      "brightness": 0.12, "duration_sec": 1.0,
+      "duration_ms": 1000, "waveform_hash": "pqr901stu234"
+    },
+    "context": {
+      "user_id": "test-user-001",
+      "residence_region": "arctic",
+      "hemisphere": "southern",
+      "generation_number": 1
+    },
+    "card": {
+      "creature_name": "Voidspore Radiolarian",
+      "flavor_text": "It drifts where sound cannot reach.",
+      "catalog_id": "AM-00001"
+    }
+  }
+}

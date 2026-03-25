@@ -1,0 +1,9 @@
+{
+  "name": "aumage-pipeline",
+  "version": "4.0.0",
+  "private": true,
+  "description": "Aumage Pipeline Worker v4 — 2-Stage Card Factory",
+  "dependencies": {
+    "@cloudflare/puppeteer": "1.0.6"
+  }
+}

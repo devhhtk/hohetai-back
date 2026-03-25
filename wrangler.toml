@@ -1,0 +1,21 @@
+name = "aumage-pipeline"
+main = "src/index.js"
+compatibility_date = "2025-09-15"
+compatibility_flags = ["nodejs_compat"]
+
+# [browser] binding removed — Puppeteer compositor replaced by client-side Canvas
+
+[vars]
+ENVIRONMENT = "production"
+B2_BUCKET_NAME = "aumage-cards"
+CARDS_CDN_BASE = "https://cards.aumage.ai"
+B2_KEY_ID = "0057abba7ae672d0000000003"
+B2_APPLICATION_KEY = "K005eYKHNV0SQ+5pCaKB7SkbY7kwwuM"
+# Set to "true" when ready to hard-reject unsigned requests
+ENFORCE_SIGNAL = "false"
+
+# Secrets (set via Kai-Deployment-GUI — never put in this file):
+   OPENAI_API_KEY = ""
+   SUPABASE_URL = "https://rweykteohelwgvenzpai.supabase.co"
+   SUPABASE_SERVICE_ROLE_KEY = "sb_publishable_MIeAlOW6K62Snbaa_VXRkA_ceOUhodT"
+   SIGNAL_SECRET = ""
