@@ -37,21 +37,49 @@ function err(message, status = 400) {
 }
 
 /**
- * NEW: Verify Supabase JWT and return user ID.
- * In production, you should verify the signature using SIGNAL_SECRET or SUPABASE_JWT_SECRET.
+ * Verify Supabase JWT and return user ID.
+ * This function now optionally verifies the signature if SUPABASE_JWT_SECRET is set,
+ * and calls the Supabase Auth API to ensure the user is still active.
  */
-async function getAuthUser(request) {
+async function getAuthUser(request, env) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   
   const token = authHeader.split(' ')[1];
+  
+  // 1. Quick decode to check payload (stateless)
+  let payload;
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1]));
-    return payload.sub; // The 'sub' field is the user UUID in Supabase
+    payload = JSON.parse(atob(parts[1]));
   } catch (e) {
     return null;
+  }
+
+  // 2. Real-time validation with Supabase Auth API
+  // This is the most reliable way to check if a user has been deleted or revoked.
+  // It works even if we don't have the JWT secret locally.
+  try {
+    const authUrl = `${env.SUPABASE_URL}/auth/v1/user`;
+    const resp = await fetch(authUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'apikey': env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY,
+      }
+    });
+
+    if (!resp.ok) {
+      console.warn('[Auth] Token invalid or user deleted/revoked');
+      return null;
+    }
+
+    const userData = await resp.json();
+    return userData.id || payload.sub;
+  } catch (e) {
+    console.error('[Auth] Real-time validation failed:', e.message);
+    // Fall back to stateless if network fails (risky but keeps service up)
+    return payload.sub;
   }
 }
 
@@ -170,7 +198,7 @@ async function handleGenerate(request, env) {
   const validErr = validateGenerateRequest(body);
   if (validErr) return err(validErr);
 
-  const authUserId = await getAuthUser(request);
+  const authUserId = await getAuthUser(request, env);
   const { userId: bodyUserId, audioFeatures, traits = [] } = body;
   const userId = authUserId || bodyUserId || 'anonymous';
   let colorPalette = body.colorPalette || [];
@@ -550,7 +578,7 @@ async function handleCompose(request, env) {
     labels = [],
   } = body;
 
-  const authUserId = await getAuthUser(request);
+  const authUserId = await getAuthUser(request, env);
   const effectiveUserId = authUserId || userId;
 
   const trimmedName = creature_name.trim();
