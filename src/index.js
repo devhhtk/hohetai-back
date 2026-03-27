@@ -44,9 +44,9 @@ function err(message, status = 400) {
 async function getAuthUser(request, env) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  
+
   const token = authHeader.split(' ')[1];
-  
+
   // 1. Quick decode to check payload (stateless)
   let payload;
   try {
@@ -124,7 +124,7 @@ async function handleExtract(request, env) {
   }
 
   return json({
-    success:   true,
+    success: true,
     signal,
     signature,
     expiresIn: 900, // 15 minutes in seconds
@@ -175,7 +175,7 @@ async function handleExtractImage(request, env) {
   }
 
   return json({
-    success:   true,
+    success: true,
     signal,
     signature,
     expiresIn: 900,
@@ -203,15 +203,14 @@ async function handleGenerate(request, env) {
   const userId = authUserId || bodyUserId || 'anonymous';
   let colorPalette = body.colorPalette || [];
 
-  // ── Signal Verification (anti-tamper) ─────────────────────
-  // If SIGNAL_SECRET is configured, we verify HMAC signature.
-  // If not configured, we still trust the signal if it has the right structure
-  // (it came from our own /api/extract endpoint in the same Worker).
   // Flip ENFORCE_SIGNAL to 'true' in wrangler.toml to hard-reject unsigned requests.
   const enforceSignal = env.ENFORCE_SIGNAL === 'true';
 
-  if (body.signal && body.signal.frequency && body.signal.time && body.signal.intelligence) {
-    // Signal has the expected structure from /api/extract
+  // ── Signal Verification (anti-tamper) ─────────────────────
+  const isSignal = body.signal && (body.signal.origen || body.signal.intelligence);
+
+  if (isSignal) {
+    // Signal has the expected structure
     if (env.SIGNAL_SECRET && body.signature) {
       // Full HMAC verification when secret is configured
       const valid = await verifySignal(body.signal, body.signature, env.SIGNAL_SECRET);
@@ -258,52 +257,52 @@ async function handleGenerate(request, env) {
       const freq = verifiedSignal.frequency;
       const time = verifiedSignal.time;
       serverFeatures = {
-        energy:          Math.min(1, time.rms * 2.5),
-        bassEnergy:      freq.bandEnergy?.bass   || freq.warmth * 0.7,
-        midEnergy:       freq.bandEnergy?.mid    || 0.5,
-        highEnergy:      freq.bandEnergy?.highs  || freq.brightness * 0.7,
+        energy: Math.min(1, time.rms * 2.5),
+        bassEnergy: freq.bandEnergy?.bass || freq.warmth * 0.7,
+        midEnergy: freq.bandEnergy?.mid || 0.5,
+        highEnergy: freq.bandEnergy?.highs || freq.brightness * 0.7,
         spectralCentroid: freq.spectralCentroid,
         zeroCrossingRate: time.zeroCrossingRate,
-        duration:        time.duration,
-        tempo:           time.bpm,
-        rms:             time.rms,
-        brightness:      freq.brightness,
-        warmth:          freq.warmth,
-        roughness:       freq.roughness,
-        harmonicRatio:   freq.harmonicRatio,
-        dynamicRange:    time.dynamicRange,
-        onsetDensity:    time.onsetDensity,
+        duration: time.duration,
+        tempo: time.bpm,
+        rms: time.rms,
+        brightness: freq.brightness,
+        warmth: freq.warmth,
+        roughness: freq.roughness,
+        harmonicRatio: freq.harmonicRatio,
+        dynamicRange: time.dynamicRange,
+        onsetDensity: time.onsetDensity,
         // New spectral features for trope scoring wheel
-        spectralFlatness:    freq.spectralFlatness    ?? 0.5,
-        spectralKurtosis:    freq.spectralKurtosis    ?? 0,
-        spectralCrest:       freq.spectralCrest       ?? 1,
+        spectralFlatness: freq.spectralFlatness ?? 0.5,
+        spectralKurtosis: freq.spectralKurtosis ?? 0,
+        spectralCrest: freq.spectralCrest ?? 1,
         perceptualSharpness: freq.perceptualSharpness ?? 0.5,
-        chromaStrength:      freq.chromaStrength       ?? 0.5,
-        perceptualSpread:    freq.perceptualSpread     ?? 0.5,
-        spectralSpread:      freq.spectralSpread       ?? 1000,
-        spectralRolloff:     freq.spectralRolloff      ?? 2000,
+        chromaStrength: freq.chromaStrength ?? 0.5,
+        perceptualSpread: freq.perceptualSpread ?? 0.5,
+        spectralSpread: freq.spectralSpread ?? 1000,
+        spectralRolloff: freq.spectralRolloff ?? 2000,
       };
       origen = 'Resogen';
     }
 
     const analysis = analyzeAudio(serverFeatures);
-    rarity     = analysis.rarity;
+    rarity = analysis.rarity;
     morphology = analysis.morphology;
-    trope      = analysis.trope;
+    trope = analysis.trope;
     if (!origen) origen = analysis.origen;
-    stats      = generateStats(serverFeatures, parseFloat(intel.arsAdjusted) * 100);
-    season     = verifiedSignal.context.season;
-    timeOfDay  = verifiedSignal.context.timeOfDay || 'day';
+    stats = generateStats(serverFeatures, parseFloat(intel.arsAdjusted) * 100);
+    season = verifiedSignal.context.season;
+    timeOfDay = verifiedSignal.context.timeOfDay || 'day';
 
   } else if (body.rarity && body.morphology) {
     // Pre-processed by frontend
-    rarity   = body.rarity;
-    trope    = body.trope || body.audiotropeType || selectTrope(audioFeatures || {});
-    origen   = body.origen || body.genType || selectOrigen('audio');
-    stats    = body.stats && Object.keys(body.stats).length > 0 && body.stats.power !== 50
+    rarity = body.rarity;
+    trope = body.trope || body.audiotropeType || selectTrope(audioFeatures || {});
+    origen = body.origen || body.genType || selectOrigen('audio');
+    stats = body.stats && Object.keys(body.stats).length > 0 && body.stats.power !== 50
       ? body.stats
       : generateStats(audioFeatures || {}, 50);
-    season   = body.season || getSeasonFromAudio(audioFeatures || {});
+    season = body.season || getSeasonFromAudio(audioFeatures || {});
     morphology = getMorphologyByName(body.morphology);
     if (!morphology) {
       morphology = {
@@ -316,12 +315,12 @@ async function handleGenerate(request, env) {
   } else {
     // Raw audio features — analyze server-side
     const analysis = analyzeAudio(audioFeatures || {});
-    rarity     = analysis.rarity;
+    rarity = analysis.rarity;
     morphology = analysis.morphology;
-    trope      = analysis.trope;
-    origen     = analysis.origen;
-    stats      = analysis.stats;
-    season     = getSeasonFromAudio(audioFeatures || {});
+    trope = analysis.trope;
+    origen = analysis.origen;
+    stats = analysis.stats;
+    season = getSeasonFromAudio(audioFeatures || {});
   }
 
   // Ensure we always have valid taxonomy values
@@ -347,21 +346,21 @@ async function handleGenerate(request, env) {
     const freq = body._verifiedSignal.frequency || {};
     const time = body._verifiedSignal.time || {};
     audioForTraits = {
-      energy:          Math.min(1, (time.rms || 0.3) * 2.5),
-      bassEnergy:      freq.bandEnergy?.bass   || (freq.warmth || 0.5) * 0.7,
-      midEnergy:       freq.bandEnergy?.mid    || 0.5,
-      highEnergy:      freq.bandEnergy?.highs  || (freq.brightness || 0.5) * 0.7,
-      spectralCentroid: freq.spectralCentroid  || 2000,
-      zeroCrossingRate: time.zeroCrossingRate   || 0.05,
-      duration:        time.duration            || 5,
-      tempo:           time.bpm                 || 100,
-      rms:             time.rms                 || 0.3,
-      brightness:      freq.brightness          || 0.5,
-      warmth:          freq.warmth              || 0.5,
-      roughness:       freq.roughness           || 0.5,
-      harmonicRatio:   freq.harmonicRatio       || 0.5,
-      dynamicRange:    time.dynamicRange         || 0.3,
-      onsetDensity:    time.onsetDensity         || 0.5,
+      energy: Math.min(1, (time.rms || 0.3) * 2.5),
+      bassEnergy: freq.bandEnergy?.bass || (freq.warmth || 0.5) * 0.7,
+      midEnergy: freq.bandEnergy?.mid || 0.5,
+      highEnergy: freq.bandEnergy?.highs || (freq.brightness || 0.5) * 0.7,
+      spectralCentroid: freq.spectralCentroid || 2000,
+      zeroCrossingRate: time.zeroCrossingRate || 0.05,
+      duration: time.duration || 5,
+      tempo: time.bpm || 100,
+      rms: time.rms || 0.3,
+      brightness: freq.brightness || 0.5,
+      warmth: freq.warmth || 0.5,
+      roughness: freq.roughness || 0.5,
+      harmonicRatio: freq.harmonicRatio || 0.5,
+      dynamicRange: time.dynamicRange || 0.3,
+      onsetDensity: time.onsetDensity || 0.5,
     };
   } else if (audioFeatures) {
     audioForTraits = {
@@ -422,7 +421,8 @@ async function handleGenerate(request, env) {
   }
 
   // ── Build creature prompt (v3 — 6 templates) ──
-  const creatureId       = generateCreatureId();
+  const creatureId = crypto.randomUUID();
+  const serialId = generateCreatureId();
   const prompt = buildCreaturePrompt({
     morphologyName: morphology.name || body.morphology || 'Unknown Creature',
     creatureName: drKaiName,
@@ -458,7 +458,7 @@ async function handleGenerate(request, env) {
 
   // ── Name: Use Dr. Kai's name, fall back to Sorting Hat ─────
   let suggestedName = drKaiName || '';
-  let flavorText    = drKaiFlavorText || '';
+  let flavorText = drKaiFlavorText || '';
 
   if (!suggestedName) {
     try {
@@ -471,65 +471,85 @@ async function handleGenerate(request, env) {
         season,
       }, env);
       suggestedName = suggestion.name;
-      flavorText    = suggestion.flavor_text || flavorText;
+      flavorText = suggestion.flavor_text || flavorText;
     } catch (e) {
       console.log('Sorting Hat non-fatal error:', e.message);
     }
   }
 
   // ── Save to Supabase ───────────────────────────────────────
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+  if (!isUUID) {
+    console.warn('[v9] Invalid user_id format:', userId);
+    // If not a UUID, database will reject it. We must ensure we have a valid UUID.
+    // In production, we should probably reject this or use a fallback if schema allows.
+  }
+
   try {
+    const intel = verifiedSignal?.intelligence || {};
+    const ctx = verifiedSignal?.context || {};
+
     await createCreature(env, {
-      creature_id:   creatureId,
-      userId,
-      creature_url:  creatureUrl,
+      creature_id: creatureId,
+      serial_number: serialId,
+      userId: isUUID ? userId : '00000000-0000-0000-0000-000000000000', // Use zero-UUID as fallback for now
+      creature_url: creatureUrl,
       rarity,
-      morphology:    morphology.name || body.morphology,
+      morphology: morphology.name || body.morphology,
       trope,
       origen,
-      traits:        finalTraits,
+      ars: intel.arsAdjusted || 0.5,
+      element: deriveElement(verifiedSignal || {}),
+      region: ctx.region || 'Unknown',
+      climate: ctx.weather?.condition || 'Temperate',
+      season,
+      traits: finalTraits,
       stats,
       flavorText,
-      season,
+      creature_name: suggestedName,
+      prompt_hash: `p-${creatureId.slice(0, 8)}`,
+      waveform_hash: `w-${creatureId.slice(0, 8)}`,
     });
   } catch (e) {
-    console.error('Supabase error (non-fatal):', e);
+    console.error('Supabase error:', e);
+    return err(`Database Save Failed: ${e.message}`, 500);
   }
 
   // Response uses locked taxonomy: origen · trope · rarity
   return json({
-    success:        true,
-    creature_id:    creatureId,
-    creature_url:   creatureUrl,
+    success: true,
+    id: creatureId,
+    creature_id: creatureId,
+    creature_url: creatureUrl,
     rarity,
-    morphology:     morphology.name || body.morphology,
+    morphology: morphology.name || body.morphology,
     trope,
     origen,
-    threat_level:   threatLevel,
+    threat_level: threatLevel,
     creature_traits: {
-      evolution:      creatureTraits.evolutionStage?.label,
-      intelligence:   creatureTraits.intelligence?.level,
-      temperament:    creatureTraits.temperament?.type,
+      evolution: creatureTraits.evolutionStage?.label,
+      intelligence: creatureTraits.intelligence?.level,
+      temperament: creatureTraits.temperament?.type,
       ecological_role: creatureTraits.ecologicalRole?.role,
-      social:         creatureTraits.socialBehavior?.type,
-      mass:           creatureTraits.physicalMass?.mass,
-      movement:       creatureTraits.movementStyle?.style,
-      texture:        creatureTraits.surfaceTexture?.texture,
-      visibility:     creatureTraits.visibility?.type,
+      social: creatureTraits.socialBehavior?.type,
+      mass: creatureTraits.physicalMass?.mass,
+      movement: creatureTraits.movementStyle?.style,
+      texture: creatureTraits.surfaceTexture?.texture,
+      visibility: creatureTraits.visibility?.type,
       bioluminescence: creatureTraits.bioluminescence?.intensity,
-      symmetry:       creatureTraits.bodySymmetry?.type,
-      age:            creatureTraits.age?.stage,
-      emotion:        creatureTraits.emotionalRange?.range,
+      symmetry: creatureTraits.bodySymmetry?.type,
+      age: creatureTraits.age?.stage,
+      emotion: creatureTraits.emotionalRange?.range,
     },
     // Legacy fields for frontend compatibility
     audiotrope_type: trope,
-    gen_type:        origen,
-    traits:         finalTraits,
+    gen_type: origen,
+    traits: finalTraits,
     stats,
-    flavor_text:    flavorText,
+    flavor_text: flavorText,
     suggested_name: suggestedName,
     season,
-    labels:         morphology.labels || [],
+    labels: morphology.labels || [],
     signal_verified: !!verifiedSignal,
     // Debug — Dr. Kai output + FULL IMAGE PROMPT (visible in browser console)
     _debug: {
@@ -593,7 +613,7 @@ async function handleCompose(request, env) {
   }
 
   return json({
-    success:       true,
+    success: true,
     creature_id,
     creature_name: trimmedName,
   });
@@ -605,16 +625,16 @@ async function handleCompose(request, env) {
 
 function handleHealth(env) {
   const checks = {
-    worker:         'ok',
-    browser:        env.BROWSER         ? 'bound'      : 'MISSING',
+    worker: 'ok',
+    browser: env.BROWSER ? 'bound' : 'MISSING',
     // replicate removed — using openai-image.js directly
-    openai:         env.OPENAI_API_KEY     ? 'configured' : 'MISSING — add OPENAI_API_KEY',
-    b2:             env.B2_KEY_ID       ? 'configured' : 'MISSING',
-    supabase:       env.SUPABASE_URL    ? 'configured' : 'MISSING',
-    signalSecret:   env.SIGNAL_SECRET   ? 'configured' : 'MISSING — add via wrangler secret put SIGNAL_SECRET',
-    enforceSignal:  env.ENFORCE_SIGNAL  || 'false',
-    environment:    env.ENVIRONMENT     || 'unknown',
-    version:        'v8.0.0',
+    openai: env.OPENAI_API_KEY ? 'configured' : 'MISSING — add OPENAI_API_KEY',
+    b2: env.B2_KEY_ID ? 'configured' : 'MISSING',
+    supabase: env.SUPABASE_URL ? 'configured' : 'MISSING',
+    signalSecret: env.SIGNAL_SECRET ? 'configured' : 'MISSING — add via wrangler secret put SIGNAL_SECRET',
+    enforceSignal: env.ENFORCE_SIGNAL || 'false',
+    environment: env.ENVIRONMENT || 'unknown',
+    version: 'v8.0.0',
   };
   return json({ status: 'ok', checks });
 }
@@ -625,7 +645,7 @@ function handleHealth(env) {
 
 export default {
   async fetch(request, env) {
-    const url    = new URL(request.url);
+    const url = new URL(request.url);
     const method = request.method;
 
     if (method === 'OPTIONS') {
@@ -654,6 +674,17 @@ export default {
       return handleCompose(request, env);
     }
 
+    if (url.pathname.startsWith('/api/creatures/') && method === 'GET') {
+      const creatureId = url.pathname.replace('/api/creatures/', '');
+      try {
+        const creature = await getCreature(env, creatureId);
+        if (!creature) return err('Creature not found', 404);
+        return json(creature);
+      } catch (e) {
+        return err(`Failed to fetch creature: ${e.message}`, 500);
+      }
+    }
+
     if (url.pathname === '/api/save-card' && method === 'POST') {
       return handleSaveCard(request, env);
     }
@@ -661,9 +692,9 @@ export default {
     // Image proxy
     if (url.pathname.startsWith('/api/image/') && method === 'GET') {
       const imagePath = url.pathname.replace('/api/image/', '');
-      const b2Url     = `https://f005.backblazeb2.com/file/aumage-cards/${imagePath}`;
+      const b2Url = `https://f005.backblazeb2.com/file/aumage-cards/${imagePath}`;
       try {
-        const resp    = await fetch(b2Url);
+        const resp = await fetch(b2Url);
         if (!resp.ok) return json({ error: 'Image not found' }, 404);
         const headers = new Headers(resp.headers);
         headers.set('Access-Control-Allow-Origin', '*');
@@ -685,7 +716,7 @@ export default {
 function deriveElement(signal) {
   const freq = signal.frequency || {};
   const time = signal.time || {};
-  
+
   const warmth = freq.warmth || 0.5;
   const brightness = freq.brightness || 0.5;
   const intensity = time.rms ? Math.min(1, time.rms * 2.5) : 0.5;
@@ -700,6 +731,6 @@ function deriveElement(signal) {
   if (harmony > 0.65 && brightness > 0.6) return 'light';
   if (brightness < 0.35 && harmony < 0.4) return 'shadow';
   if (warmth > 0.55) return 'nature';
-  
+
   return 'storm';
 }

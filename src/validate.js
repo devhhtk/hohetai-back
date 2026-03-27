@@ -8,12 +8,13 @@ export function validateGenerateRequest(body) {
   if (!body) return 'Request body is required';
   if (!body.userId) return 'userId is required';
 
-  // Accept either raw audioFeatures or processed creature attributes
+  // Accept either raw audioFeatures, processed creature attributes, or a verified signal
   const hasAudioFeatures = body.audioFeatures && typeof body.audioFeatures === 'object';
   const hasProcessedData = body.morphology || body.audiotropeType;
+  const hasSignal = body.signal && typeof body.signal === 'object';
 
-  if (!hasAudioFeatures && !hasProcessedData) {
-    return 'Either audioFeatures or processed creature attributes (morphology, audiotropeType) are required';
+  if (!hasAudioFeatures && !hasProcessedData && !hasSignal) {
+    return 'Either audioFeatures, a verified signal, or processed creature attributes (morphology, audiotropeType) are required';
   }
 
   return null; // valid

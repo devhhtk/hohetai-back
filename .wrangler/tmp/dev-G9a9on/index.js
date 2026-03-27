@@ -1233,9 +1233,10 @@ __name(generateCreatureId, "generateCreatureId");
 
 // src/db.js
 function supabaseHeaders(env2) {
+  const key = env2.SUPABASE_SERVICE_ROLE_KEY || env2.SUPABASE_SERVICE_KEY;
   return {
-    "apikey": env2.SUPABASE_SERVICE_KEY,
-    "Authorization": `Bearer ${env2.SUPABASE_SERVICE_KEY}`,
+    "apikey": key,
+    "Authorization": `Bearer ${key}`,
     "Content-Type": "application/json",
     "Prefer": "return=representation"
   };
@@ -1243,23 +1244,39 @@ function supabaseHeaders(env2) {
 __name(supabaseHeaders, "supabaseHeaders");
 async function createCreature(env2, data) {
   const url = `${env2.SUPABASE_URL}/rest/v1/creatures`;
+  const timestamp = Date.now();
+  const catalogId = `CAT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+  const body = {
+    id: data.creature_id,
+    // MUST BE UUID
+    user_id: data.userId,
+    serial_number: data.serial_number,
+    // The AM-XXXXX ID from Worker
+    catalog_id: catalogId,
+    base_rarity: (data.rarity || "common").toLowerCase(),
+    ars: data.ars || 0.5,
+    trope_class: data.trope,
+    morphology: data.morphology,
+    element: data.element || "neutral",
+    residence_region: data.region || "Unknown",
+    climate_zone: data.climate || "Temperate",
+    season: (data.season || "spring").toLowerCase(),
+    hemisphere: data.hemisphere || "northern",
+    waveform_hash: data.waveform_hash || `hash-${timestamp}`,
+    prompt_hash: data.prompt_hash || `prompt-${timestamp}`,
+    generation_number: data.generation_number || 0,
+    card_url: data.creature_url || "",
+    creature_name: data.creature_name || null,
+    variant_tags: { ...data.stats || {}, ...data.traits || {} },
+    annotation_features: data.labels || [],
+    mint_timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    flavor_text: data.flavorText || null,
+    created_at: (/* @__PURE__ */ new Date()).toISOString()
+  };
   const resp = await fetch(url, {
     method: "POST",
     headers: supabaseHeaders(env2),
-    body: JSON.stringify({
-      id: data.creature_id,
-      user_id: data.userId,
-      creature_url: data.creature_url,
-      rarity: data.rarity,
-      morphology: data.morphology,
-      audiotrope_type: data.audiotropeType,
-      traits: data.traits,
-      stats: data.stats,
-      flavor_text: data.flavorText,
-      season: data.season,
-      status: "pending_name",
-      created_at: (/* @__PURE__ */ new Date()).toISOString()
-    })
+    body: JSON.stringify(body)
   });
   if (!resp.ok) {
     const err2 = await resp.text();
@@ -1276,9 +1293,7 @@ async function finalizeCreature(env2, creatureId, data) {
     headers: supabaseHeaders(env2),
     body: JSON.stringify({
       creature_name: data.creature_name,
-      card_url: data.card_url,
-      status: "complete",
-      finalized_at: (/* @__PURE__ */ new Date()).toISOString()
+      card_url: data.card_url || ""
     })
   });
   if (!resp.ok) {
@@ -1289,6 +1304,19 @@ async function finalizeCreature(env2, creatureId, data) {
   return rows[0];
 }
 __name(finalizeCreature, "finalizeCreature");
+async function getCreature(env2, id) {
+  const url = `${env2.SUPABASE_URL}/rest/v1/creatures?id=eq.${id}&select=*`;
+  const resp = await fetch(url, {
+    headers: supabaseHeaders(env2)
+  });
+  if (!resp.ok) {
+    const err2 = await resp.text();
+    throw new Error(`Supabase get creature failed: ${resp.status} ${err2}`);
+  }
+  const rows = await resp.json();
+  return rows[0] || null;
+}
+__name(getCreature, "getCreature");
 
 // src/sorting-hat.js
 var SYSTEM_PROMPT = `You are the Creature Codex, a naming oracle for Audiotropes \u2014 
@@ -1442,8 +1470,9 @@ function validateGenerateRequest(body) {
   if (!body.userId) return "userId is required";
   const hasAudioFeatures = body.audioFeatures && typeof body.audioFeatures === "object";
   const hasProcessedData = body.morphology || body.audiotropeType;
-  if (!hasAudioFeatures && !hasProcessedData) {
-    return "Either audioFeatures or processed creature attributes (morphology, audiotropeType) are required";
+  const hasSignal = body.signal && typeof body.signal === "object";
+  if (!hasAudioFeatures && !hasProcessedData && !hasSignal) {
+    return "Either audioFeatures, a verified signal, or processed creature attributes (morphology, audiotropeType) are required";
   }
   return null;
 }
@@ -2369,8 +2398,7 @@ async function decodePNG(buffer) {
   const ds = new DecompressionStream("deflate");
   const writer = ds.writable.getWriter();
   const reader = ds.readable.getReader();
-  const rawDeflate = compressed.slice(2);
-  writer.write(rawDeflate);
+  writer.write(compressed);
   writer.close();
   const decompressedChunks = [];
   while (true) {
@@ -2801,11 +2829,20 @@ function buildImageIntelligence(visual, creatureFeatures, context2) {
 }
 __name(buildImageIntelligence, "buildImageIntelligence");
 async function extractImageSignal(imageBuffer, request) {
+  const view = new Uint8Array(imageBuffer);
+  const isPng = view[0] === 137 && view[1] === 80 && view[2] === 78 && view[3] === 71;
+  const isJpeg = view[0] === 255 && view[1] === 216;
+  if (!isPng) {
+    if (isJpeg) {
+      throw new Error("Only PNG images are currently supported. Please convert your JPEG to PNG and try again.");
+    }
+    throw new Error("Unsupported image format. Please upload a valid PNG image.");
+  }
   let decoded;
   try {
     decoded = await decodePNG(imageBuffer);
   } catch (e) {
-    throw new Error(`Image decode failed: ${e.message}`);
+    throw new Error(`PNG decode failed: ${e.message}`);
   }
   const { pixels, width, height } = decoded;
   if (width < 10 || height < 10) throw new Error("Image too small (minimum 10x10)");
@@ -2846,44 +2883,37 @@ function canonicalize(signal) {
     version: signal.version,
     origen: signal.origen,
     extractedAt: signal.extractedAt,
-    // Frequency axes
-    spectralCentroid: signal.frequency.spectralCentroid,
-    spectralSpread: signal.frequency.spectralSpread,
-    spectralRolloff: signal.frequency.spectralRolloff,
-    brightness: signal.frequency.brightness,
-    warmth: signal.frequency.warmth,
-    roughness: signal.frequency.roughness,
-    harmonicRatio: signal.frequency.harmonicRatio,
-    dominantPitchClass: signal.frequency.dominantPitchClass,
-    // Time axes
-    rms: signal.time.rms,
-    peak: signal.time.peak,
-    zeroCrossingRate: signal.time.zeroCrossingRate,
-    dynamicRange: signal.time.dynamicRange,
-    onsetDensity: signal.time.onsetDensity,
-    bpm: signal.time.bpm,
-    duration: signal.time.duration,
     // Context entropy
-    timestamp: signal.context.timestamp,
-    timeOfDay: signal.context.timeOfDay,
-    season: signal.context.season,
-    lat: signal.context.lat,
-    lon: signal.context.lon,
-    region: signal.context.region,
-    weatherCondition: signal.context.weather.condition,
-    temperature: signal.context.weather.temperature,
+    timestamp: signal.context?.timestamp,
+    timeOfDay: signal.context?.timeOfDay,
+    season: signal.context?.season,
+    lat: signal.context?.lat,
+    lon: signal.context?.lon,
+    region: signal.context?.region,
+    weatherCondition: signal.context?.weather?.condition,
     // Intelligence layer
-    tropeSignal: signal.intelligence.tropeSignal,
-    tropeStrength: signal.intelligence.tropeStrength,
-    ars: signal.intelligence.ars,
-    arsAdjusted: signal.intelligence.arsAdjusted,
-    contextModifier: signal.intelligence.contextModifier
+    tropeSignal: signal.intelligence?.tropeSignal,
+    tropeStrength: signal.intelligence?.tropeStrength,
+    ars: signal.intelligence?.ars,
+    arsAdjusted: signal.intelligence?.arsAdjusted
   };
+  if (signal.origen === "Imagen" && signal.visual) {
+    payload.dominantHue = signal.visual.dominantHue;
+    payload.warmth = signal.visual.warmth;
+    payload.brightness = signal.visual.brightness;
+    payload.edgeDensity = signal.visual.edgeDensity;
+    payload.symmetry = signal.visual.symmetryScore;
+  } else if (signal.frequency && signal.time) {
+    payload.spectralCentroid = signal.frequency.spectralCentroid;
+    payload.rms = signal.time.rms;
+    payload.bpm = signal.time.bpm;
+    payload.duration = signal.time.duration;
+  }
   return JSON.stringify(payload);
 }
 __name(canonicalize, "canonicalize");
 async function signSignal(signal, secret) {
-  if (!secret) throw new Error("SIGNAL_SECRET not configured");
+  if (!secret) return null;
   const key = await importKey(secret);
   const canonical = canonicalize(signal);
   const encoder = new TextEncoder();
@@ -3363,7 +3393,8 @@ async function handleGenerate(request, env2) {
   const userId = authUserId || bodyUserId || "anonymous";
   let colorPalette = body.colorPalette || [];
   const enforceSignal = env2.ENFORCE_SIGNAL === "true";
-  if (body.signal && body.signal.frequency && body.signal.time && body.signal.intelligence) {
+  const isSignal = body.signal && (body.signal.origen || body.signal.intelligence);
+  if (isSignal) {
     if (env2.SIGNAL_SECRET && body.signature) {
       const valid = await verifySignal(body.signal, body.signature, env2.SIGNAL_SECRET);
       if (!valid) {
@@ -3534,7 +3565,8 @@ async function handleGenerate(request, env2) {
     var kidsFields = null;
     var tweenFields = null;
   }
-  const creatureId = generateCreatureId();
+  const creatureId = crypto.randomUUID();
+  const serialId = generateCreatureId();
   const prompt = buildCreaturePrompt({
     morphologyName: morphology.name || body.morphology || "Unknown Creature",
     creatureName: drKaiName,
@@ -3579,25 +3611,42 @@ async function handleGenerate(request, env2) {
       console.log("Sorting Hat non-fatal error:", e.message);
     }
   }
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+  if (!isUUID) {
+    console.warn("[v9] Invalid user_id format:", userId);
+  }
   try {
+    const intel = verifiedSignal?.intelligence || {};
+    const ctx = verifiedSignal?.context || {};
     await createCreature(env2, {
       creature_id: creatureId,
-      userId,
+      serial_number: serialId,
+      userId: isUUID ? userId : "00000000-0000-0000-0000-000000000000",
+      // Use zero-UUID as fallback for now
       creature_url: creatureUrl,
       rarity,
       morphology: morphology.name || body.morphology,
       trope,
       origen,
+      ars: intel.arsAdjusted || 0.5,
+      element: deriveElement(verifiedSignal || {}),
+      region: ctx.region || "Unknown",
+      climate: ctx.weather?.condition || "Temperate",
+      season,
       traits: finalTraits,
       stats,
       flavorText,
-      season
+      creature_name: suggestedName,
+      prompt_hash: `p-${creatureId.slice(0, 8)}`,
+      waveform_hash: `w-${creatureId.slice(0, 8)}`
     });
   } catch (e) {
-    console.error("Supabase error (non-fatal):", e);
+    console.error("Supabase error:", e);
+    return err(`Database Save Failed: ${e.message}`, 500);
   }
   return json2({
     success: true,
+    id: creatureId,
     creature_id: creatureId,
     creature_url: creatureUrl,
     rarity,
@@ -3726,6 +3775,16 @@ var src_default = {
     if (url.pathname === "/api/compose" && method === "POST") {
       return handleCompose(request, env2);
     }
+    if (url.pathname.startsWith("/api/creatures/") && method === "GET") {
+      const creatureId = url.pathname.replace("/api/creatures/", "");
+      try {
+        const creature = await getCreature(env2, creatureId);
+        if (!creature) return err("Creature not found", 404);
+        return json2(creature);
+      } catch (e) {
+        return err(`Failed to fetch creature: ${e.message}`, 500);
+      }
+    }
     if (url.pathname === "/api/save-card" && method === "POST") {
       return handleSaveCard(request, env2);
     }
@@ -3746,6 +3805,25 @@ var src_default = {
     return json2({ error: "Not found" }, 404);
   }
 };
+function deriveElement(signal) {
+  const freq = signal.frequency || {};
+  const time3 = signal.time || {};
+  const warmth = freq.warmth || 0.5;
+  const brightness = freq.brightness || 0.5;
+  const intensity = time3.rms ? Math.min(1, time3.rms * 2.5) : 0.5;
+  const harmony = freq.harmonicRatio || 0.5;
+  const roughness = freq.roughness || 0.5;
+  if (warmth > 0.7 && intensity > 0.6) return "fire";
+  if (warmth < 0.3 && brightness > 0.5) return "ice";
+  if (intensity > 0.7 && roughness > 0.5) return "storm";
+  if (warmth > 0.4 && warmth < 0.6 && brightness < 0.4) return "earth";
+  if (intensity < 0.35 && harmony > 0.5) return "water";
+  if (harmony > 0.65 && brightness > 0.6) return "light";
+  if (brightness < 0.35 && harmony < 0.4) return "shadow";
+  if (warmth > 0.55) return "nature";
+  return "storm";
+}
+__name(deriveElement, "deriveElement");
 
 // ../../../../AppData/Local/npm-cache/_npx/32026684e21afda6/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
 var drainBody = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx) => {
@@ -3788,7 +3866,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-Wxmalz/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-NgEJHS/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3820,7 +3898,7 @@ function __facade_invoke__(request, env2, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-Wxmalz/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-NgEJHS/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

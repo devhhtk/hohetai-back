@@ -63,9 +63,9 @@ async function decodePNG(buffer) {
   const writer = ds.writable.getWriter();
   const reader = ds.readable.getReader();
 
-  // Strip 2-byte zlib header (CMF + FLG)
-  const rawDeflate = compressed.slice(2);
-  writer.write(rawDeflate);
+  // The IDAT chunks together form a standard zlib stream (with header and footer).
+  // DecompressionStream('deflate') expects the zlib header.
+  writer.write(compressed);
   writer.close();
 
   const decompressedChunks = [];
@@ -569,12 +569,24 @@ function buildImageIntelligence(visual, creatureFeatures, context) {
 // ─────────────────────────────────────────────────────────────
 
 export async function extractImageSignal(imageBuffer, request) {
-  // 1. Decode image
+  // 1. Detect File Type
+  const view = new Uint8Array(imageBuffer);
+  const isPng = view[0] === 0x89 && view[1] === 0x50 && view[2] === 0x4E && view[3] === 0x47;
+  const isJpeg = view[0] === 0xFF && view[1] === 0xD8;
+
+  if (!isPng) {
+    if (isJpeg) {
+      throw new Error('Only PNG images are currently supported. Please convert your JPEG to PNG and try again.');
+    }
+    throw new Error('Unsupported image format. Please upload a valid PNG image.');
+  }
+
+  // 2. Decode PNG
   let decoded;
   try {
     decoded = await decodePNG(imageBuffer);
   } catch (e) {
-    throw new Error(`Image decode failed: ${e.message}`);
+    throw new Error(`PNG decode failed: ${e.message}`);
   }
 
   const { pixels, width, height } = decoded;

@@ -26,44 +26,39 @@ async function importKey(secret) {
 
 function canonicalize(signal) {
   // We sign the core fields that matter for creature generation
-  // Context is included so time/location/weather are tamper-evident too
   const payload = {
     version:     signal.version,
     origen:      signal.origen,
     extractedAt: signal.extractedAt,
-    // Frequency axes
-    spectralCentroid:  signal.frequency.spectralCentroid,
-    spectralSpread:    signal.frequency.spectralSpread,
-    spectralRolloff:   signal.frequency.spectralRolloff,
-    brightness:        signal.frequency.brightness,
-    warmth:            signal.frequency.warmth,
-    roughness:         signal.frequency.roughness,
-    harmonicRatio:     signal.frequency.harmonicRatio,
-    dominantPitchClass: signal.frequency.dominantPitchClass,
-    // Time axes
-    rms:               signal.time.rms,
-    peak:              signal.time.peak,
-    zeroCrossingRate:  signal.time.zeroCrossingRate,
-    dynamicRange:      signal.time.dynamicRange,
-    onsetDensity:      signal.time.onsetDensity,
-    bpm:               signal.time.bpm,
-    duration:          signal.time.duration,
     // Context entropy
-    timestamp:         signal.context.timestamp,
-    timeOfDay:         signal.context.timeOfDay,
-    season:            signal.context.season,
-    lat:               signal.context.lat,
-    lon:               signal.context.lon,
-    region:            signal.context.region,
-    weatherCondition:  signal.context.weather.condition,
-    temperature:       signal.context.weather.temperature,
+    timestamp:   signal.context?.timestamp,
+    timeOfDay:   signal.context?.timeOfDay,
+    season:      signal.context?.season,
+    lat:         signal.context?.lat,
+    lon:         signal.context?.lon,
+    region:      signal.context?.region,
+    weatherCondition: signal.context?.weather?.condition,
     // Intelligence layer
-    tropeSignal:       signal.intelligence.tropeSignal,
-    tropeStrength:     signal.intelligence.tropeStrength,
-    ars:               signal.intelligence.ars,
-    arsAdjusted:       signal.intelligence.arsAdjusted,
-    contextModifier:   signal.intelligence.contextModifier,
+    tropeSignal:   signal.intelligence?.tropeSignal,
+    tropeStrength: signal.intelligence?.tropeStrength,
+    ars:           signal.intelligence?.ars,
+    arsAdjusted:   signal.intelligence?.arsAdjusted,
   };
+
+  // Source-specific fields
+  if (signal.origen === 'Imagen' && signal.visual) {
+    payload.dominantHue = signal.visual.dominantHue;
+    payload.warmth      = signal.visual.warmth;
+    payload.brightness  = signal.visual.brightness;
+    payload.edgeDensity = signal.visual.edgeDensity;
+    payload.symmetry    = signal.visual.symmetryScore;
+  } else if (signal.frequency && signal.time) {
+    payload.spectralCentroid = signal.frequency.spectralCentroid;
+    payload.rms              = signal.time.rms;
+    payload.bpm              = signal.time.bpm;
+    payload.duration         = signal.time.duration;
+  }
+
   return JSON.stringify(payload);
 }
 
@@ -73,16 +68,16 @@ function canonicalize(signal) {
 // ─────────────────────────────────────────────────────────────
 
 export async function signSignal(signal, secret) {
-  if (!secret) throw new Error('SIGNAL_SECRET not configured');
+  if (!secret) return null; // Return null if secret not configured (allows development without HMAC)
 
-  const key       = await importKey(secret);
+  const key = await importKey(secret);
   const canonical = canonicalize(signal);
-  const encoder   = new TextEncoder();
-  const sigBytes  = await crypto.subtle.sign('HMAC', key, encoder.encode(canonical));
+  const encoder = new TextEncoder();
+  const sigBytes = await crypto.subtle.sign('HMAC', key, encoder.encode(canonical));
 
   // Convert to base64url
   const sigArray = Array.from(new Uint8Array(sigBytes));
-  const base64   = btoa(String.fromCharCode(...sigArray));
+  const base64 = btoa(String.fromCharCode(...sigArray));
   const base64url = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 
   return base64url;
@@ -94,18 +89,18 @@ export async function signSignal(signal, secret) {
 // ─────────────────────────────────────────────────────────────
 
 export async function verifySignal(signal, signature, secret) {
-  if (!secret)    return false;
+  if (!secret) return false;
   if (!signature) return false;
 
   try {
-    const key       = await importKey(secret);
+    const key = await importKey(secret);
     const canonical = canonicalize(signal);
-    const encoder   = new TextEncoder();
+    const encoder = new TextEncoder();
 
     // Decode base64url → ArrayBuffer
-    const base64  = signature.replace(/-/g, '+').replace(/_/g, '/');
-    const padded  = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
-    const binary  = atob(padded);
+    const base64 = signature.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+    const binary = atob(padded);
     const sigBytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) sigBytes[i] = binary.charCodeAt(i);
 
