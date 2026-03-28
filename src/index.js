@@ -492,10 +492,13 @@ async function handleGenerate(request, env) {
     await createCreature(env, {
       creature_id: creatureId,
       serial_number: serialId,
-      userId: isUUID ? userId : '00000000-0000-0000-0000-000000000000', // Use zero-UUID as fallback for now
+      userId: isUUID ? userId : null,
       creature_url: creatureUrl,
+      image_url: creatureUrl,
       rarity,
       morphology: morphology.name || body.morphology,
+      tier: morphology.tier || '1',
+      domain: morphology.domain || 'terrestrial',
       trope,
       origen,
       ars: intel.arsAdjusted || 0.5,
@@ -507,8 +510,18 @@ async function handleGenerate(request, env) {
       stats,
       flavorText,
       creature_name: suggestedName,
+      prompt_text: prompt,
       prompt_hash: `p-${creatureId.slice(0, 8)}`,
       waveform_hash: `w-${creatureId.slice(0, 8)}`,
+      features: verifiedSignal?.intelligence || {},
+      visuals: verifiedSignal?.visual || {},
+      audio_source: verifiedSignal?.origen === 'Imagen' ? 'upload' : 'record',
+      fingerprint: body.fingerprint || null,
+      seed: body.seed || null,
+      mode: body.mode || 'creature',
+      style: body.cardStyle || 'realistic',
+      is_public: body.is_public !== undefined ? body.is_public : true,
+      frame_variant: body.frame_variant || 'standard',
     });
   } catch (e) {
     console.error('Supabase error:', e);

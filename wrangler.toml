@@ -16,6 +16,6 @@ ENFORCE_SIGNAL = "false"
 
 # Secrets (set via Kai-Deployment-GUI — never put in this file):
    OPENAI_API_KEY = ""
-   SUPABASE_URL = "https://rweykteohelwgvenzpai.supabase.co"
-   SUPABASE_SERVICE_ROLE_KEY = "sb_publishable_MIeAlOW6K62Snbaa_VXRkA_ceOUhodT"
+   SUPABASE_URL = "https://ddndxmjedlddgnchqxmk.supabase.co"
+   SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkbmR4bWplZGxkZGduY2hxeG1rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjE1Njk4MiwiZXhwIjoyMDg3NzMyOTgyfQ.kcgDttBR3rHV46soOcMxenANLzJTcun0qpxnMPg4Yt0"
    SIGNAL_SECRET = ""

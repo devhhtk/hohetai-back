@@ -22,29 +22,47 @@ export async function createCreature(env, data) {
   const catalogId = `CAT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
 
   const body = {
-    id:                data.creature_id, // MUST BE UUID
-    user_id:           data.userId,
-    serial_number:     data.serial_number, // The AM-XXXXX ID from Worker
-    catalog_id:        catalogId,
-    base_rarity:       (data.rarity || 'common').toLowerCase(),
-    ars:                data.ars || 0.5,
-    trope_class:       data.trope,
-    morphology:        data.morphology,
-    element:           data.element || 'neutral',
-    residence_region:  data.region || 'Unknown',
-    climate_zone:      data.climate || 'Temperate',
-    season:            (data.season || 'spring').toLowerCase(),
-    hemisphere:        data.hemisphere || 'northern',
-    waveform_hash:     data.waveform_hash || `hash-${timestamp}`,
-    prompt_hash:       data.prompt_hash || `prompt-${timestamp}`,
+    id: data.creature_id || data.id,
+    user_id: data.userId || data.user_id,
+    image_url: data.image_url || data.creature_url || null,
+    video_url: data.video_url || null,
+    audio_source: data.audio_source || null,
+    audio_storage_path: data.audio_storage_path || null,
+    link_url: data.link_url || null,
+    fingerprint: data.fingerprint || null,
+    seed: data.seed || null,
+    mode: data.mode || 'creature',
+    style: data.style || 'realistic',
+    features: data.features || {},
+    visuals: data.visuals || {},
+    prompt_text: data.prompt_text || null,
+    is_public: data.is_public !== undefined ? data.is_public : true,
+    folder_id: data.folder_id || null,
+    serial_number: data.serial_number,
+    catalog_id: catalogId,
+    base_rarity: (data.rarity || 'common').toLowerCase(),
+    ars: data.ars || 0.5,
+    trope_class: data.trope,
+    morphology: data.morphology,
+    tier: data.tier || '1',
+    element: data.element || 'neutral',
+    domain: data.domain || 'terrestrial',
+    variant_tags: data.variant_tags || { ...(data.stats || {}), ...(data.traits || {}) },
+    mint_timestamp: data.mint_timestamp || new Date().toISOString(),
+    residence_region: data.region || 'Unknown',
+    climate_zone: data.climate || 'Temperate',
+    season: (data.season || 'spring').toLowerCase(),
+    hemisphere: data.hemisphere || 'northern',
+    waveform_hash: data.waveform_hash || `hash-${timestamp}`,
     generation_number: data.generation_number || 0,
-    card_url:          data.creature_url || '',
-    creature_name:     data.creature_name || null,
-    variant_tags:      { ...(data.stats || {}), ...(data.traits || {}) },
-    annotation_features: data.labels || [],
-    mint_timestamp:    new Date().toISOString(),
-    flavor_text:       data.flavorText || null,
-    created_at:        new Date().toISOString(),
+    card_url: data.creature_url || data.card_url || '',
+    frame_variant: data.frame_variant || 'standard',
+    annotation_features: data.labels || data.annotation_features || [],
+    prompt_hash: data.prompt_hash || `prompt-${timestamp}`,
+    creature_name: data.creature_name || null,
+    flavor_text: data.flavorText || data.flavor_text || null,
+    climate_mastery: data.climate_mastery || null,
+    created_at: new Date().toISOString(),
   };
 
   const resp = await fetch(url, {
@@ -54,9 +72,11 @@ export async function createCreature(env, data) {
   });
 
   if (!resp.ok) {
-    const err = await resp.text();
-    throw new Error(`Supabase create creature failed: ${resp.status} ${err}`);
+    const errText = await resp.text();
+    console.error(`[Supabase] Create Failed:`, resp.status, errText);
+    throw new Error(`Supabase create creature failed: ${resp.status} ${errText}`);
   }
+
 
   const rows = await resp.json();
   return rows[0];
@@ -71,10 +91,7 @@ export async function finalizeCreature(env, creatureId, data) {
   const resp = await fetch(url, {
     method: 'PATCH',
     headers: supabaseHeaders(env),
-    body: JSON.stringify({
-      creature_name: data.creature_name,
-      card_url:      data.card_url || '',
-    }),
+    body: JSON.stringify(data),
   });
 
   if (!resp.ok) {

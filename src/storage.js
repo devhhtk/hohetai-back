@@ -4,7 +4,7 @@
  * Upload a file to B2 and return its public URL.
  */
 export async function uploadToB2(imageBytes, fileName, contentType = 'image/png', env) {
-  const keyId  = env.B2_KEY_ID;
+  const keyId = env.B2_KEY_ID;
   const appKey = env.B2_APPLICATION_KEY;
   const bucket = env.B2_BUCKET_NAME || 'aumage-cards';
   const cdnBase = env.CARDS_CDN_BASE || `https://f005.backblazeb2.com/file/${bucket}`;
@@ -19,7 +19,7 @@ export async function uploadToB2(imageBytes, fileName, contentType = 'image/png'
   if (!authResp.ok) throw new Error(`B2 auth failed: ${authResp.status}`);
   const authData = await authResp.json();
 
-  const apiUrl    = authData.apiUrl;
+  const apiUrl = authData.apiUrl;
   const authToken = authData.authorizationToken;
   const downloadUrl = authData.downloadUrl;
 
@@ -60,7 +60,7 @@ export async function uploadToB2(imageBytes, fileName, contentType = 'image/png'
 
 async function computeSha1(data) {
   const hashBuffer = await crypto.subtle.digest('SHA-1', data);
-  const hashArray  = Array.from(new Uint8Array(hashBuffer));
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 

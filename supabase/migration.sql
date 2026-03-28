@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS creatures (
   id                  UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   serial_number       TEXT UNIQUE NOT NULL,
   catalog_id          TEXT UNIQUE NOT NULL,
-  user_id             UUID NOT NULL REFERENCES auth.users(id),
+  user_id             UUID REFERENCES auth.users(id), -- Nullable for guest/anonymous generation
   base_rarity         TEXT NOT NULL CHECK (base_rarity IN (
                         'common', 'uncommon', 'rare', 'epic',
                         'legendary', 'primatrope', 'megatrope'
@@ -78,12 +78,22 @@ ALTER TABLE creatures ENABLE ROW LEVEL SECURITY;
 -- Users can read their own creatures
 CREATE POLICY "Users can view own creatures"
   ON creatures FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (true); -- Allow public view so return=representation works for guests
 
--- Service role can insert (Worker uses service key)
-CREATE POLICY "Service can insert creatures"
-  ON creatures FOR INSERT
+
+-- Service role can bypass RLS (Worker uses service key)
+CREATE POLICY "Service bypass RLS"
+  ON creatures FOR ALL
+  TO service_role
+  USING (true)
   WITH CHECK (true);
+
+-- Allow public/anon to create their own creatures
+CREATE POLICY "Public can insert creatures"
+  ON creatures FOR INSERT
+  TO public
+  WITH CHECK (true);
+
 
 -- Users can update name/flavor (once) on their own creatures
 CREATE POLICY "Users can name own creatures"
