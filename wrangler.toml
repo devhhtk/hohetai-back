@@ -16,7 +16,7 @@ B2_APPLICATION_KEY = "K005ROmUl/HPm5mtn6ISy5Zi+P9Yy/g"
 ENFORCE_SIGNAL = "false"
 
 # Secrets (set via Kai-Deployment-GUI — never put in this file):
-   OPENAI_API_KEY = ""
+   OPENAI_API_KEY = "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"
    SUPABASE_URL = "https://ddndxmjedlddgnchqxmk.supabase.co"
    SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkbmR4bWplZGxkZGduY2hxeG1rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjE1Njk4MiwiZXhwIjoyMDg3NzMyOTgyfQ.kcgDttBR3rHV46soOcMxenANLzJTcun0qpxnMPg4Yt0"
    SIGNAL_SECRET = ""
