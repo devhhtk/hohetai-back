@@ -20,7 +20,7 @@ import { calculateTraits, formatTraitsForAI } from './creature-traits.js';
 import { describeCreature } from './dr-kai.js';
 
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://hohetoai.vercel.app',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
