@@ -7,10 +7,11 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "production"
-B2_BUCKET_NAME = "aumage-cards"
-CARDS_CDN_BASE = "https://cards.aumage.ai"
-B2_KEY_ID = "0057abba7ae672d0000000003"
-B2_APPLICATION_KEY = "K005eYKHNV0SQ+5pCaKB7SkbY7kwwuM"
+B2_BUCKET_NAME = "Hohetai"
+# OPTION: Either remove the next line or make sure it includes the bucket name
+CARDS_CDN_BASE = "https://Hohetai.s3.us-east-005.backblazeb2.com" 
+B2_KEY_ID = "00530940d5786660000000002"
+B2_APPLICATION_KEY = "K005ROmUl/HPm5mtn6ISy5Zi+P9Yy/g"
 # Set to "true" when ready to hard-reject unsigned requests
 ENFORCE_SIGNAL = "false"
 

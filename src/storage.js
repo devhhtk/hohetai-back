@@ -21,16 +21,33 @@ export async function uploadToB2(imageBytes, fileName, contentType = 'image/png'
 
   const apiUrl = authData.apiUrl;
   const authToken = authData.authorizationToken;
-  const downloadUrl = authData.downloadUrl;
+  let bucketId = authData.allowed.bucketId;
+
+  // Step 1.5 — Resolve bucketId if using Master Key
+  if (!bucketId) {
+    const listBucketsResp = await fetch(`${apiUrl}/b2api/v2/b2_list_buckets`, {
+      method: "POST",
+      headers: {
+        Authorization: authToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ accountId: authData.accountId }),
+    });
+    if (!listBucketsResp.ok) throw new Error(`B2 list buckets failed: ${listBucketsResp.status}`);
+    const bucketsData = await listBucketsResp.json();
+    const bucketObj = bucketsData.buckets.find(b => b.bucketName === bucket);
+    if (!bucketObj) throw new Error(`Bucket not found: ${bucket}`);
+    bucketId = bucketObj.bucketId;
+  }
 
   // Step 2 — Get upload URL
   const uploadUrlResp = await fetch(`${apiUrl}/b2api/v2/b2_get_upload_url`, {
-    method: 'POST',
+    method: "POST",
     headers: {
       Authorization: authToken,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ bucketId: authData.allowed.bucketId }),
+    body: JSON.stringify({ bucketId }),
   });
   if (!uploadUrlResp.ok) throw new Error(`B2 get upload URL failed: ${uploadUrlResp.status}`);
   const uploadData = await uploadUrlResp.json();

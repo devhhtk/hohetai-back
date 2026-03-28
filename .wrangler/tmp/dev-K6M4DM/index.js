@@ -1184,14 +1184,29 @@ async function uploadToB2(imageBytes, fileName, contentType = "image/png", env2)
   const authData = await authResp.json();
   const apiUrl = authData.apiUrl;
   const authToken = authData.authorizationToken;
-  const downloadUrl = authData.downloadUrl;
+  let bucketId = authData.allowed.bucketId;
+  if (!bucketId) {
+    const listBucketsResp = await fetch(`${apiUrl}/b2api/v2/b2_list_buckets`, {
+      method: "POST",
+      headers: {
+        Authorization: authToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ accountId: authData.accountId })
+    });
+    if (!listBucketsResp.ok) throw new Error(`B2 list buckets failed: ${listBucketsResp.status}`);
+    const bucketsData = await listBucketsResp.json();
+    const bucketObj = bucketsData.buckets.find((b) => b.bucketName === bucket);
+    if (!bucketObj) throw new Error(`Bucket not found: ${bucket}`);
+    bucketId = bucketObj.bucketId;
+  }
   const uploadUrlResp = await fetch(`${apiUrl}/b2api/v2/b2_get_upload_url`, {
     method: "POST",
     headers: {
       Authorization: authToken,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ bucketId: authData.allowed.bucketId })
+    body: JSON.stringify({ bucketId })
   });
   if (!uploadUrlResp.ok) throw new Error(`B2 get upload URL failed: ${uploadUrlResp.status}`);
   const uploadData = await uploadUrlResp.json();
@@ -3815,8 +3830,8 @@ var src_default = {
       return handleSaveCard(request, env2);
     }
     if (url.pathname.startsWith("/api/image/") && method === "GET") {
-      const imagePath = url.pathname.replace("/api/image/", "");
-      const b2Url = `https://f005.backblazeb2.com/file/aumage-cards/${imagePath}`;
+      const bucket = env2.B2_BUCKET_NAME || "aumage-cards";
+      const b2Url = `https://f005.backblazeb2.com/file/${bucket}/${imagePath}`;
       try {
         const resp = await fetch(b2Url);
         if (!resp.ok) return json2({ error: "Image not found" }, 404);
@@ -3892,7 +3907,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-Hbt7fa/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-6tM6IY/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3924,7 +3939,7 @@ function __facade_invoke__(request, env2, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-Hbt7fa/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-6tM6IY/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

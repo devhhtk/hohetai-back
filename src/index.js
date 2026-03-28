@@ -704,8 +704,8 @@ export default {
 
     // Image proxy
     if (url.pathname.startsWith('/api/image/') && method === 'GET') {
-      const imagePath = url.pathname.replace('/api/image/', '');
-      const b2Url = `https://f005.backblazeb2.com/file/aumage-cards/${imagePath}`;
+      const bucket = env.B2_BUCKET_NAME || 'aumage-cards';
+      const b2Url = `https://f005.backblazeb2.com/file/${bucket}/${imagePath}`;
       try {
         const resp = await fetch(b2Url);
         if (!resp.ok) return json({ error: 'Image not found' }, 404);
