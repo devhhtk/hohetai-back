@@ -33,10 +33,10 @@ async function decodePNG(buffer) {
     );
 
     if (chunkType === 'IHDR') {
-      width      = view.getUint32(offset + 8);
-      height     = view.getUint32(offset + 12);
-      bitDepth   = view.getUint8(offset + 16);
-      colorType  = view.getUint8(offset + 17);
+      width = view.getUint32(offset + 8);
+      height = view.getUint32(offset + 12);
+      bitDepth = view.getUint8(offset + 16);
+      colorType = view.getUint8(offset + 17);
     } else if (chunkType === 'IDAT') {
       idatChunks.push(new Uint8Array(buffer, offset + 8, chunkLength));
     } else if (chunkType === 'IEND') {
@@ -214,11 +214,11 @@ function extractVisualFeatures(pixels, width, height) {
       const bIdx = (i + width) * 4;
       if (rIdx + 2 < pixels.length && bIdx + 2 < pixels.length) {
         const gx = Math.abs(pixels[idx] - pixels[rIdx]) +
-                   Math.abs(pixels[idx + 1] - pixels[rIdx + 1]) +
-                   Math.abs(pixels[idx + 2] - pixels[rIdx + 2]);
+          Math.abs(pixels[idx + 1] - pixels[rIdx + 1]) +
+          Math.abs(pixels[idx + 2] - pixels[rIdx + 2]);
         const gy = Math.abs(pixels[idx] - pixels[bIdx]) +
-                   Math.abs(pixels[idx + 1] - pixels[bIdx + 1]) +
-                   Math.abs(pixels[idx + 2] - pixels[bIdx + 2]);
+          Math.abs(pixels[idx + 1] - pixels[bIdx + 1]) +
+          Math.abs(pixels[idx + 2] - pixels[bIdx + 2]);
         edgeSum += Math.sqrt(gx * gx + gy * gy) / (255 * 3);
         edgeCount++;
       }
@@ -230,8 +230,8 @@ function extractVisualFeatures(pixels, width, height) {
       const mirrorIdx = (y * width + mirrorX) * 4;
       if (mirrorIdx + 2 < pixels.length) {
         symDiff += (Math.abs(pixels[idx] - pixels[mirrorIdx]) +
-                    Math.abs(pixels[idx + 1] - pixels[mirrorIdx + 1]) +
-                    Math.abs(pixels[idx + 2] - pixels[mirrorIdx + 2])) / (255 * 3);
+          Math.abs(pixels[idx + 1] - pixels[mirrorIdx + 1]) +
+          Math.abs(pixels[idx + 2] - pixels[mirrorIdx + 2])) / (255 * 3);
         symCount++;
       }
     }
@@ -340,31 +340,31 @@ function mapVisualToCreatureFeatures(visual) {
   // Map to the same feature space that audio uses
   // So creature-traits.js and rarity.js work identically
   return {
-    energy:           Math.min(1, meanSaturation * 0.5 + luminanceContrast * 0.5),
-    bassEnergy:       Math.min(1, (1 - brightness) * 0.5 + warmth * 0.3 + (1 - edgeDensity) * 0.2),
-    midEnergy:        Math.min(1, colorComplexity * 0.5 + hueSpread * 0.5),
-    highEnergy:       Math.min(1, brightness * 0.5 + edgeDensity * 0.3 + meanSaturation * 0.2),
+    energy: Math.min(1, meanSaturation * 0.5 + luminanceContrast * 0.5),
+    bassEnergy: Math.min(1, (1 - brightness) * 0.5 + warmth * 0.3 + (1 - edgeDensity) * 0.2),
+    midEnergy: Math.min(1, colorComplexity * 0.5 + hueSpread * 0.5),
+    highEnergy: Math.min(1, brightness * 0.5 + edgeDensity * 0.3 + meanSaturation * 0.2),
     spectralCentroid: Math.round(brightness * 6000 + 500),
     zeroCrossingRate: textureComplexity * 0.12,
-    duration:         resolutionProxy * 25 + 3, // bigger image = more "developed"
-    tempo:            Math.round(60 + edgeDensity * 120), // busy = fast
-    rms:              Math.min(1, luminanceContrast * 0.5 + meanSaturation * 0.5),
-    brightness:       brightness,
-    warmth:           warmth,
-    roughness:        textureComplexity,
-    harmonicRatio:    symmetryScore * 0.6 + (1 - textureComplexity) * 0.4,
-    dynamicRange:     luminanceVariance,
-    onsetDensity:     objectDensity * 8,
+    duration: resolutionProxy * 25 + 3, // bigger image = more "developed"
+    tempo: Math.round(60 + edgeDensity * 120), // busy = fast
+    rms: Math.min(1, luminanceContrast * 0.5 + meanSaturation * 0.5),
+    brightness: brightness,
+    warmth: warmth,
+    roughness: textureComplexity,
+    harmonicRatio: symmetryScore * 0.6 + (1 - textureComplexity) * 0.4,
+    dynamicRange: luminanceVariance,
+    onsetDensity: objectDensity * 8,
 
     // New features for trope scoring wheel
-    spectralFlatness:    hueSpread * 0.6 + (1 - symmetryScore) * 0.4,
-    spectralKurtosis:    Math.max(0, (1 - hueSpread) * 10), // narrow hue = peaky
-    spectralCrest:       Math.max(1, (1 - hueSpread) * 15),
+    spectralFlatness: hueSpread * 0.6 + (1 - symmetryScore) * 0.4,
+    spectralKurtosis: Math.max(0, (1 - hueSpread) * 10), // narrow hue = peaky
+    spectralCrest: Math.max(1, (1 - hueSpread) * 15),
     perceptualSharpness: edgeDensity * 0.6 + luminanceContrast * 0.4,
-    chromaStrength:      meanSaturation * 0.5 + (1 - hueSpread) * 0.5,
-    perceptualSpread:    hueSpread * 0.4 + colorComplexity * 0.3 + luminanceVariance * 0.3,
-    spectralSpread:      Math.round(colorComplexity * 3000),
-    spectralRolloff:     Math.round(brightness * 6000 + 1000),
+    chromaStrength: meanSaturation * 0.5 + (1 - hueSpread) * 0.5,
+    perceptualSpread: hueSpread * 0.4 + colorComplexity * 0.3 + luminanceVariance * 0.3,
+    spectralSpread: Math.round(colorComplexity * 3000),
+    spectralRolloff: Math.round(brightness * 6000 + 1000),
   };
 }
 
@@ -378,13 +378,13 @@ function mapVisualToCreatureFeatures(visual) {
 // Visual trope hints (used for logging, actual selection uses rarity.js)
 function getVisualTropeHint(visual) {
   const { warmth, brightness, edgeDensity, meanSaturation,
-          textureComplexity, symmetryScore, luminanceContrast } = visual;
+    textureComplexity, symmetryScore, luminanceContrast } = visual;
 
-  if (warmth > 0.7 && luminanceContrast > 0.5)       return 'Pyrotrope';
-  if (brightness > 0.65 && edgeDensity < 0.3)         return 'Aerotrope';
+  if (warmth > 0.7 && luminanceContrast > 0.5) return 'Pyrotrope';
+  if (brightness > 0.65 && edgeDensity < 0.3) return 'Aerotrope';
   if (warmth < 0.4 && brightness > 0.5 && symmetryScore > 0.6) return 'Prismatrope';
   if (warmth > 0.5 && meanSaturation > 0.4 && textureComplexity > 0.4) return 'Floratrope';
-  if (brightness < 0.4 && edgeDensity < 0.4)          return 'Aquatrope';
+  if (brightness < 0.4 && edgeDensity < 0.4) return 'Aquatrope';
   return 'Terratrope';
 }
 
@@ -475,22 +475,22 @@ function rgbToHue(r, g, b) {
 // ─────────────────────────────────────────────────────────────
 
 async function getImageContextEntropy(request) {
-  const now       = new Date();
+  const now = new Date();
   const timestamp = now.getTime();
-  const hour      = now.getUTCHours();
+  const hour = now.getUTCHours();
   const timeOfDay =
-    hour >= 5  && hour < 8  ? 'dawn'  :
-    hour >= 8  && hour < 17 ? 'day'   :
-    hour >= 17 && hour < 20 ? 'dusk'  : 'night';
-  const month  = now.getUTCMonth();
+    hour >= 5 && hour < 8 ? 'dawn' :
+      hour >= 8 && hour < 17 ? 'day' :
+        hour >= 17 && hour < 20 ? 'dusk' : 'night';
+  const month = now.getUTCMonth();
   const season =
     month >= 2 && month <= 4 ? 'spring' :
-    month >= 5 && month <= 7 ? 'summer' :
-    month >= 8 && month <= 10 ? 'autumn' : 'winter';
-  const cfLat  = parseFloat(request.headers.get('CF-Latitude')  || '0');
-  const cfLon  = parseFloat(request.headers.get('CF-Longitude') || '0');
-  const lat    = Math.round(cfLat  * 10) / 10;
-  const lon    = Math.round(cfLon  * 10) / 10;
+      month >= 5 && month <= 7 ? 'summer' :
+        month >= 8 && month <= 10 ? 'autumn' : 'winter';
+  const cfLat = parseFloat(request.headers.get('CF-Latitude') || '0');
+  const cfLon = parseFloat(request.headers.get('CF-Longitude') || '0');
+  const lat = Math.round(cfLat * 10) / 10;
+  const lon = Math.round(cfLon * 10) / 10;
   const region = request.headers.get('CF-IPCountry') || 'XX';
 
   let weather = { condition: 'unknown', temperature: 15, windspeed: 0 };
@@ -500,18 +500,18 @@ async function getImageContextEntropy(request) {
       const resp = await fetch(weatherUrl, { signal: AbortSignal.timeout(3000) });
       if (resp.ok) {
         const data = await resp.json();
-        const cw   = data.current_weather || {};
+        const cw = data.current_weather || {};
         const code = cw.weathercode || 0;
         const condition =
           code === 0 ? 'clear' : code <= 3 ? 'cloudy' : code <= 49 ? 'foggy' :
-          code <= 69 ? 'rainy' : code <= 79 ? 'snowy' : code <= 99 ? 'stormy' : 'unknown';
+            code <= 69 ? 'rainy' : code <= 79 ? 'snowy' : code <= 99 ? 'stormy' : 'unknown';
         weather = {
           condition,
           temperature: Math.round(cw.temperature ?? 15),
-          windspeed:   Math.round(cw.windspeed   ?? 0),
+          windspeed: Math.round(cw.windspeed ?? 0),
         };
       }
-    } catch (_) {}
+    } catch (_) { }
   }
 
   return { timestamp, timeOfDay, season, lat, lon, region, weather };
@@ -524,8 +524,8 @@ async function getImageContextEntropy(request) {
 
 function buildImageIntelligence(visual, creatureFeatures, context) {
   const { warmth, brightness, edgeDensity, meanSaturation,
-          textureComplexity, symmetryScore, luminanceContrast,
-          hueSpread, colorComplexity, resolutionProxy, dominantHue } = visual;
+    textureComplexity, symmetryScore, luminanceContrast,
+    hueSpread, colorComplexity, resolutionProxy, dominantHue } = visual;
 
   const tropeHint = getVisualTropeHint(visual);
 
@@ -541,11 +541,11 @@ function buildImageIntelligence(visual, creatureFeatures, context) {
 
   const weatherBonus =
     context.weather.condition === 'stormy' ? 0.08 :
-    context.weather.condition === 'clear'  ? 0.03 :
-    context.weather.condition === 'snowy'  ? 0.05 : 0;
+      context.weather.condition === 'clear' ? 0.03 :
+        context.weather.condition === 'snowy' ? 0.05 : 0;
   const timeBonus =
-    context.timeOfDay === 'dawn'  ? 0.04 :
-    context.timeOfDay === 'night' ? 0.06 : 0;
+    context.timeOfDay === 'dawn' ? 0.04 :
+      context.timeOfDay === 'night' ? 0.06 : 0;
   const contextModifier = parseFloat(Math.min(0.15, weatherBonus + timeBonus).toFixed(4));
 
   return {
@@ -610,8 +610,8 @@ export async function extractImageSignal(imageBuffer, request) {
 
   // 7. Assemble signal
   return {
-    version:     '1.0',
-    origen:      'Imagen',
+    version: '1.0',
+    origen: 'Imagen',
     extractedAt: context.timestamp,
     visual,
     creatureFeatures,

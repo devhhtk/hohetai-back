@@ -1184,14 +1184,29 @@ async function uploadToB2(imageBytes, fileName, contentType = "image/png", env2)
   const authData = await authResp.json();
   const apiUrl = authData.apiUrl;
   const authToken = authData.authorizationToken;
-  const downloadUrl = authData.downloadUrl;
+  let bucketId = authData.allowed.bucketId;
+  if (!bucketId) {
+    const listBucketsResp = await fetch(`${apiUrl}/b2api/v2/b2_list_buckets`, {
+      method: "POST",
+      headers: {
+        Authorization: authToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ accountId: authData.accountId })
+    });
+    if (!listBucketsResp.ok) throw new Error(`B2 list buckets failed: ${listBucketsResp.status}`);
+    const bucketsData = await listBucketsResp.json();
+    const bucketObj = bucketsData.buckets.find((b) => b.bucketName === bucket);
+    if (!bucketObj) throw new Error(`Bucket not found: ${bucket}`);
+    bucketId = bucketObj.bucketId;
+  }
   const uploadUrlResp = await fetch(`${apiUrl}/b2api/v2/b2_get_upload_url`, {
     method: "POST",
     headers: {
       Authorization: authToken,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ bucketId: authData.allowed.bucketId })
+    body: JSON.stringify({ bucketId })
   });
   if (!uploadUrlResp.ok) throw new Error(`B2 get upload URL failed: ${uploadUrlResp.status}`);
   const uploadData = await uploadUrlResp.json();
@@ -1247,30 +1262,46 @@ async function createCreature(env2, data) {
   const timestamp = Date.now();
   const catalogId = `CAT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
   const body = {
-    id: data.creature_id,
-    // MUST BE UUID
-    user_id: data.userId,
+    id: data.creature_id || data.id,
+    user_id: data.userId || data.user_id,
+    image_url: data.image_url || data.creature_url || null,
+    video_url: data.video_url || null,
+    audio_source: data.audio_source || null,
+    audio_storage_path: data.audio_storage_path || null,
+    link_url: data.link_url || null,
+    fingerprint: data.fingerprint || null,
+    seed: data.seed || null,
+    mode: data.mode || "creature",
+    style: data.style || "realistic",
+    features: data.features || {},
+    visuals: data.visuals || {},
+    prompt_text: data.prompt_text || null,
+    is_public: data.is_public !== void 0 ? data.is_public : true,
+    folder_id: data.folder_id || null,
     serial_number: data.serial_number,
-    // The AM-XXXXX ID from Worker
     catalog_id: catalogId,
     base_rarity: (data.rarity || "common").toLowerCase(),
     ars: data.ars || 0.5,
     trope_class: data.trope,
     morphology: data.morphology,
+    tier: data.tier || "1",
     element: data.element || "neutral",
+    domain: data.domain || "terrestrial",
+    variant_tags: data.variant_tags || { ...data.stats || {}, ...data.traits || {} },
+    mint_timestamp: data.mint_timestamp || (/* @__PURE__ */ new Date()).toISOString(),
     residence_region: data.region || "Unknown",
     climate_zone: data.climate || "Temperate",
     season: (data.season || "spring").toLowerCase(),
     hemisphere: data.hemisphere || "northern",
     waveform_hash: data.waveform_hash || `hash-${timestamp}`,
-    prompt_hash: data.prompt_hash || `prompt-${timestamp}`,
     generation_number: data.generation_number || 0,
-    card_url: data.creature_url || "",
+    card_url: data.creature_url || data.card_url || "",
+    frame_variant: data.frame_variant || "standard",
+    annotation_features: data.labels || data.annotation_features || [],
+    prompt_hash: data.prompt_hash || `prompt-${timestamp}`,
     creature_name: data.creature_name || null,
-    variant_tags: { ...data.stats || {}, ...data.traits || {} },
-    annotation_features: data.labels || [],
-    mint_timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-    flavor_text: data.flavorText || null,
+    flavor_text: data.flavorText || data.flavor_text || null,
+    climate_mastery: data.climate_mastery || null,
     created_at: (/* @__PURE__ */ new Date()).toISOString()
   };
   const resp = await fetch(url, {
@@ -1279,8 +1310,9 @@ async function createCreature(env2, data) {
     body: JSON.stringify(body)
   });
   if (!resp.ok) {
-    const err2 = await resp.text();
-    throw new Error(`Supabase create creature failed: ${resp.status} ${err2}`);
+    const errText = await resp.text();
+    console.error(`[Supabase] Create Failed:`, resp.status, errText);
+    throw new Error(`Supabase create creature failed: ${resp.status} ${errText}`);
   }
   const rows = await resp.json();
   return rows[0];
@@ -1291,10 +1323,7 @@ async function finalizeCreature(env2, creatureId, data) {
   const resp = await fetch(url, {
     method: "PATCH",
     headers: supabaseHeaders(env2),
-    body: JSON.stringify({
-      creature_name: data.creature_name,
-      card_url: data.card_url || ""
-    })
+    body: JSON.stringify(data)
   });
   if (!resp.ok) {
     const err2 = await resp.text();
@@ -3253,7 +3282,7 @@ __name(describeCreature, "describeCreature");
 
 // src/index.js
 var CORS_HEADERS2 = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://hohetoai.vercel.app",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization"
 };
@@ -3621,11 +3650,13 @@ async function handleGenerate(request, env2) {
     await createCreature(env2, {
       creature_id: creatureId,
       serial_number: serialId,
-      userId: isUUID ? userId : "00000000-0000-0000-0000-000000000000",
-      // Use zero-UUID as fallback for now
+      userId: isUUID ? userId : null,
       creature_url: creatureUrl,
+      image_url: creatureUrl,
       rarity,
       morphology: morphology.name || body.morphology,
+      tier: morphology.tier || "1",
+      domain: morphology.domain || "terrestrial",
       trope,
       origen,
       ars: intel.arsAdjusted || 0.5,
@@ -3637,8 +3668,18 @@ async function handleGenerate(request, env2) {
       stats,
       flavorText,
       creature_name: suggestedName,
+      prompt_text: prompt,
       prompt_hash: `p-${creatureId.slice(0, 8)}`,
-      waveform_hash: `w-${creatureId.slice(0, 8)}`
+      waveform_hash: `w-${creatureId.slice(0, 8)}`,
+      features: verifiedSignal?.intelligence || {},
+      visuals: verifiedSignal?.visual || {},
+      audio_source: verifiedSignal?.origen === "Imagen" ? "upload" : "record",
+      fingerprint: body.fingerprint || null,
+      seed: body.seed || null,
+      mode: body.mode || "creature",
+      style: body.cardStyle || "realistic",
+      is_public: body.is_public !== void 0 ? body.is_public : true,
+      frame_variant: body.frame_variant || "standard"
     });
   } catch (e) {
     console.error("Supabase error:", e);
@@ -3789,8 +3830,8 @@ var src_default = {
       return handleSaveCard(request, env2);
     }
     if (url.pathname.startsWith("/api/image/") && method === "GET") {
-      const imagePath = url.pathname.replace("/api/image/", "");
-      const b2Url = `https://f005.backblazeb2.com/file/aumage-cards/${imagePath}`;
+      const bucket = env2.B2_BUCKET_NAME || "aumage-cards";
+      const b2Url = `https://f005.backblazeb2.com/file/${bucket}/${imagePath}`;
       try {
         const resp = await fetch(b2Url);
         if (!resp.ok) return json2({ error: "Image not found" }, 404);
@@ -3866,7 +3907,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-NgEJHS/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-DtYwF4/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3898,7 +3939,7 @@ function __facade_invoke__(request, env2, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-NgEJHS/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-DtYwF4/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
