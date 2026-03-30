@@ -1,4 +1,4 @@
-name = "aumage-pipeline"
+name = "hohetai-back"
 main = "src/index.js"
 compatibility_date = "2025-09-15"
 compatibility_flags = ["nodejs_compat"]
