@@ -1,0 +1,18 @@
+name = "hohetai-back"
+main = "src/index.js"
+compatibility_date = "2025-09-15"
+compatibility_flags = ["nodejs_compat"]
+
+# [browser] binding removed — Puppeteer compositor replaced by client-side Canvas
+
+[vars]
+ENVIRONMENT = "production"
+B2_BUCKET_NAME = "Hohetai"
+# OPTION: Either remove the next line or make sure it includes the bucket name
+CARDS_CDN_BASE = "https://Hohetai.s3.us-east-005.backblazeb2.com" 
+B2_KEY_ID = "00530940d5786660000000002"
+# Set to "true" when ready to hard-reject unsigned requests
+ENFORCE_SIGNAL = "false"
+
+# Secrets (set via Kai-Deployment-GUI — never put in this file):
+SUPABASE_URL = "https://ddndxmjedlddgnchqxmk.supabase.co"

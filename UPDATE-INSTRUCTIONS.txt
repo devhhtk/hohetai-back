@@ -1,0 +1,12 @@
+AUMAGE WORKER UPDATE — Canvas Compositor + Image Proxy
+======================================================
+
+Copy these into your existing aumage-worker/src/ folder:
+
+1. src/index.js     — REPLACES existing (adds /api/save-card + /api/image/ proxy)
+2. src/save-card.js  — NEW FILE
+
+Then deploy via setup wizard.
+
+NEW: /api/image/{path} proxies B2 images with CORS headers so the
+Canvas compositor can load creature images cross-origin.
