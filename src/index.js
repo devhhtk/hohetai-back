@@ -22,7 +22,7 @@ import { describeCreature } from './dr-kai.js';
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': '*',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
 function json(data, status = 200) {
@@ -701,7 +701,8 @@ export default {
     if (url.pathname === '/api/save-card' && method === 'POST') {
       return handleSaveCard(request, env);
     }
-
+    
+    const imagePath = url.pathname.replace('/api/image/', '');
     // Image proxy
     if (url.pathname.startsWith('/api/image/') && method === 'GET') {
       const bucket = env.B2_BUCKET_NAME || 'aumage-cards';
