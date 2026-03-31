@@ -20,32 +20,10 @@ import { calculateTraits, formatTraitsForAI } from './creature-traits.js';
 import { describeCreature } from './dr-kai.js';
 
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': 'https://hohetoai.vercel.app',
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
-
-// ✅ Wrap ALL responses automatically
-function withCORS(response) {
-  const newHeaders = new Headers(response.headers);
-
-  for (const [key, value] of Object.entries(CORS_HEADERS)) {
-    newHeaders.set(key, value);
-  }
-
-  return new Response(response.body, {
-    status: response.status,
-    headers: newHeaders,
-  });
-}
-
-// ✅ JSON helper (always safe)
-function json(data, status = 200) {
-  return withCORS(new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  }));
-}
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -674,23 +652,18 @@ function handleHealth(env) {
   return json({ status: 'ok', checks });
 }
 
+// ─────────────────────────────────────────────────────────────
+// MAIN HANDLER
+// ─────────────────────────────────────────────────────────────
 
 export default {
   async fetch(request, env) {
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        status: 204,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          'Access-Control-Max-Age': '86400',
-        },
-      });
-    }
-    
     const url = new URL(request.url);
     const method = request.method;
+
+    if (method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
 
     if (url.pathname === '/health') {
       return handleHealth(env);
@@ -728,12 +701,11 @@ export default {
     if (url.pathname === '/api/save-card' && method === 'POST') {
       return handleSaveCard(request, env);
     }
-    
-    const imagePath = url.pathname.replace('/api/image/', '');
+
     // Image proxy
     if (url.pathname.startsWith('/api/image/') && method === 'GET') {
       const bucket = env.B2_BUCKET_NAME || 'aumage-cards';
-      const b2Url = 'https://f005.backblazeb2.com/file/${bucket}/${imagePath}';
+      const b2Url = `https://f005.backblazeb2.com/file/${bucket}/${imagePath}`;
       try {
         const resp = await fetch(b2Url);
         if (!resp.ok) return json({ error: 'Image not found' }, 404);
