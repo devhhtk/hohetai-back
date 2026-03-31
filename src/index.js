@@ -20,7 +20,7 @@ import { calculateTraits, formatTraitsForAI } from './creature-traits.js';
 import { describeCreature } from './dr-kai.js';
 
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://hohetoai.vercel.app',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
@@ -658,23 +658,20 @@ function handleHealth(env) {
 
 export default {
   async fetch(request, env) {
-   if(request.method === 'OPTIONS') {
+    if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Access-Control-Max-Age': '86400',
         },
       });
     }
     
     const url = new URL(request.url);
     const method = request.method;
-
-    /* if (method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
-    } */
 
     if (url.pathname === '/health') {
       return handleHealth(env);
