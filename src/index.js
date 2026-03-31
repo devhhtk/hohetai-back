@@ -20,7 +20,7 @@ import { calculateTraits, formatTraitsForAI } from './creature-traits.js';
 import { describeCreature } from './dr-kai.js';
 
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://hohetoai.vercel.app',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
@@ -656,6 +656,19 @@ function handleHealth(env) {
 // MAIN HANDLER
 // ─────────────────────────────────────────────────────────────
 
+function addCORS(res) {
+  const headers = new Headers(res.headers);
+
+  Object.entries(CORS_HEADERS).forEach(([k, v]) => {
+    headers.set(k, v);
+  });
+
+  return new Response(res.body, {
+    status: res.status,
+    headers,
+  });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -666,25 +679,30 @@ export default {
     }
 
     if (url.pathname === '/health') {
-      return handleHealth(env);
+      //return handleHealth(env);
+      return addCORS(handleHealth(env));
     }
 
     // NEW: Signal extraction endpoint
     if (url.pathname === '/api/extract' && method === 'POST') {
-      return handleExtract(request, env);
+      //return handleExtract(request, env);
+      return addCORS(await handleExtract(request, env));
     }
 
     // NEW: Image signal extraction endpoint
     if (url.pathname === '/api/extract-image' && method === 'POST') {
-      return handleExtractImage(request, env);
+      //return handleExtractImage(request, env);
+      return addCORS(await handleExtractImage(request, env));
     }
 
     if (url.pathname === '/api/generate' && method === 'POST') {
-      return handleGenerate(request, env);
+      //return handleGenerate(request, env);
+      return addCORS(await handleGenerate(request, env));
     }
 
     if (url.pathname === '/api/compose' && method === 'POST') {
-      return handleCompose(request, env);
+      //return handleCompose(request, env);
+      return addCORS(await handleCompose(request, env));
     }
 
     if (url.pathname.startsWith('/api/creatures/') && method === 'GET') {
@@ -692,14 +710,16 @@ export default {
       try {
         const creature = await getCreature(env, creatureId);
         if (!creature) return err('Creature not found', 404);
-        return json(creature);
+        //return json(creature);
+        return addCORS(json(creature));
       } catch (e) {
         return err(`Failed to fetch creature: ${e.message}`, 500);
       }
     }
 
     if (url.pathname === '/api/save-card' && method === 'POST') {
-      return handleSaveCard(request, env);
+      //return handleSaveCard(request, env);
+      return addCORS(await handleSaveCard(request, env));
     }
 
     // Image proxy
@@ -718,7 +738,8 @@ export default {
       }
     }
 
-    return json({ error: 'Not found' }, 404);
+    //return json({ error: 'Not found' }, 404);
+    return addCORS(json({ error: 'Not found' }, 404));
   },
 };
 
