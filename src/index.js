@@ -658,12 +658,23 @@ function handleHealth(env) {
 
 export default {
   async fetch(request, env) {
+   if(request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
+    }
+    
     const url = new URL(request.url);
     const method = request.method;
 
-    if (method === 'OPTIONS') {
+    /* if (method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
+    } */
 
     if (url.pathname === '/health') {
       return handleHealth(env);
