@@ -671,75 +671,111 @@ function addCORS(res) {
 
 export default {
   async fetch(request, env) {
+
     const url = new URL(request.url);
-    const method = request.method;
 
-    if (method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    // 🔥 Dynamic CORS (handles preflight properly)
+    const origin = request.headers.get('Origin');
+
+    const CORS_HEADERS = {
+      'Access-Control-Allow-Origin': origin || '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers':
+        request.headers.get('Access-Control-Request-Headers') ||
+        'Content-Type, Authorization',
+    };
+
+    // 🔥 Always handle preflight FIRST
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: CORS_HEADERS,
+      });
     }
 
-    if (url.pathname === '/health') {
-      //return handleHealth(env);
-      return addCORS(handleHealth(env));
-    }
+    // 🔥 Helper to attach CORS to ALL responses
+    const withCORS = (res) => {
+      const headers = new Headers(res.headers);
+      Object.entries(CORS_HEADERS).forEach(([k, v]) => headers.set(k, v));
+      return new Response(res.body, {
+        status: res.status,
+        headers,
+      });
+    };
 
-    // NEW: Signal extraction endpoint
-    if (url.pathname === '/api/extract' && method === 'POST') {
-      //return handleExtract(request, env);
-      return addCORS(await handleExtract(request, env));
-    }
+    try {
 
-    // NEW: Image signal extraction endpoint
-    if (url.pathname === '/api/extract-image' && method === 'POST') {
-      //return handleExtractImage(request, env);
-      return addCORS(await handleExtractImage(request, env));
-    }
-
-    if (url.pathname === '/api/generate' && method === 'POST') {
-      //return handleGenerate(request, env);
-      return addCORS(await handleGenerate(request, env));
-    }
-
-    if (url.pathname === '/api/compose' && method === 'POST') {
-      //return handleCompose(request, env);
-      return addCORS(await handleCompose(request, env));
-    }
-
-    if (url.pathname.startsWith('/api/creatures/') && method === 'GET') {
-      const creatureId = url.pathname.replace('/api/creatures/', '');
-      try {
-        const creature = await getCreature(env, creatureId);
-        if (!creature) return err('Creature not found', 404);
-        //return json(creature);
-        return addCORS(json(creature));
-      } catch (e) {
-        return err(`Failed to fetch creature: ${e.message}`, 500);
+      // HEALTH
+      if (url.pathname === '/health') {
+        return withCORS(handleHealth(env));
       }
-    }
 
-    if (url.pathname === '/api/save-card' && method === 'POST') {
-      //return handleSaveCard(request, env);
-      return addCORS(await handleSaveCard(request, env));
-    }
-
-    // Image proxy
-    if (url.pathname.startsWith('/api/image/') && method === 'GET') {
-      const bucket = env.B2_BUCKET_NAME || 'aumage-cards';
-      const b2Url = `https://f005.backblazeb2.com/file/${bucket}/${imagePath}`;
-      try {
-        const resp = await fetch(b2Url);
-        if (!resp.ok) return json({ error: 'Image not found' }, 404);
-        const headers = new Headers(resp.headers);
-        headers.set('Access-Control-Allow-Origin', '*');
-        headers.set('Cache-Control', 'public, max-age=31536000');
-        return new Response(resp.body, { status: 200, headers });
-      } catch (e) {
-        return json({ error: 'Image proxy failed' }, 500);
+      // SIGNAL EXTRACT (audio)
+      if (url.pathname === '/api/extract' && request.method === 'POST') {
+        return withCORS(await handleExtract(request, env));
       }
-    }
 
-    //return json({ error: 'Not found' }, 404);
-    return addCORS(json({ error: 'Not found' }, 404));
+      // SIGNAL EXTRACT (image)
+      if (url.pathname === '/api/extract-image' && request.method === 'POST') {
+        return withCORS(await handleExtractImage(request, env));
+      }
+
+      // GENERATE
+      if (url.pathname === '/api/generate' && request.method === 'POST') {
+        return withCORS(await handleGenerate(request, env));
+      }
+
+      // COMPOSE
+      if (url.pathname === '/api/compose' && request.method === 'POST') {
+        return withCORS(await handleCompose(request, env));
+      }
+
+      // GET CREATURE
+      if (url.pathname.startsWith('/api/creatures/') && request.method === 'GET') {
+        const creatureId = url.pathname.replace('/api/creatures/', '');
+        try {
+          const creature = await getCreature(env, creatureId);
+          if (!creature) return withCORS(err('Creature not found', 404));
+          return withCORS(json(creature));
+        } catch (e) {
+          return withCORS(err(`Failed to fetch creature: ${e.message}`, 500));
+        }
+      }
+
+      // SAVE CARD
+      if (url.pathname === '/api/save-card' && request.method === 'POST') {
+        return withCORS(await handleSaveCard(request, env));
+      }
+
+      // IMAGE PROXY
+      if (url.pathname.startsWith('/api/image/') && request.method === 'GET') {
+        const bucket = env.B2_BUCKET_NAME || 'aumage-cards';
+        const imagePath = url.pathname.replace('/api/image/', '');
+        const b2Url = `https://f005.backblazeb2.com/file/${bucket}/${imagePath}`;
+
+        try {
+          const resp = await fetch(b2Url);
+          if (!resp.ok) return withCORS(json({ error: 'Image not found' }, 404));
+
+          const headers = new Headers(resp.headers);
+          Object.entries(CORS_HEADERS).forEach(([k, v]) => headers.set(k, v));
+          headers.set('Cache-Control', 'public, max-age=31536000');
+
+          return new Response(resp.body, {
+            status: 200,
+            headers,
+          });
+        } catch (e) {
+          return withCORS(json({ error: 'Image proxy failed' }, 500));
+        }
+      }
+
+      // FALLBACK
+      return withCORS(json({ error: 'Not found' }, 404));
+
+    } catch (err) {
+      return withCORS(json({ error: err.message }, 500));
+    }
   },
 };
 
