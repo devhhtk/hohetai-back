@@ -25,6 +25,28 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+// ✅ Wrap ALL responses automatically
+function withCORS(response) {
+  const newHeaders = new Headers(response.headers);
+
+  for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    newHeaders.set(key, value);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    headers: newHeaders,
+  });
+}
+
+// ✅ JSON helper (always safe)
+function json(data, status = 200) {
+  return withCORS(new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  }));
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -581,9 +603,6 @@ async function handleGenerate(request, env) {
   });
 }
 
-// ─────────────────────────────────────────────────────────────
-// STAGE B — /api/compose
-// ─────────────────────────────────────────────────────────────
 
 async function handleCompose(request, env) {
   let body;
@@ -632,10 +651,6 @@ async function handleCompose(request, env) {
   });
 }
 
-// ─────────────────────────────────────────────────────────────
-// HEALTH CHECK
-// ─────────────────────────────────────────────────────────────
-
 function handleHealth(env) {
   const checks = {
     worker: 'ok',
@@ -652,9 +667,6 @@ function handleHealth(env) {
   return json({ status: 'ok', checks });
 }
 
-// ─────────────────────────────────────────────────────────────
-// MAIN HANDLER
-// ─────────────────────────────────────────────────────────────
 
 export default {
   async fetch(request, env) {
@@ -714,7 +726,7 @@ export default {
     // Image proxy
     if (url.pathname.startsWith('/api/image/') && method === 'GET') {
       const bucket = env.B2_BUCKET_NAME || 'aumage-cards';
-      const b2Url = `https://f005.backblazeb2.com/file/${bucket}/${imagePath}`;
+      const b2Url = 'https://f005.backblazeb2.com/file/${bucket}/${imagePath}';
       try {
         const resp = await fetch(b2Url);
         if (!resp.ok) return json({ error: 'Image not found' }, 404);
