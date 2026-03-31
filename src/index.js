@@ -603,6 +603,9 @@ async function handleGenerate(request, env) {
   });
 }
 
+// ─────────────────────────────────────────────────────────────
+// STAGE B — /api/compose
+// ─────────────────────────────────────────────────────────────
 
 async function handleCompose(request, env) {
   let body;
@@ -650,6 +653,10 @@ async function handleCompose(request, env) {
     creature_name: trimmedName,
   });
 }
+
+// ─────────────────────────────────────────────────────────────
+// HEALTH CHECK
+// ─────────────────────────────────────────────────────────────
 
 function handleHealth(env) {
   const checks = {
