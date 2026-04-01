@@ -656,46 +656,26 @@ function handleHealth(env) {
 // MAIN HANDLER
 // ─────────────────────────────────────────────────────────────
 
-function addCORS(res) {
-  const headers = new Headers(res.headers);
-
-  Object.entries(CORS_HEADERS).forEach(([k, v]) => {
-    headers.set(k, v);
-  });
-
-  return new Response(res.body, {
-    status: res.status,
-    headers,
-  });
-}
-
 export default {
   async fetch(request, env) {
-
     const url = new URL(request.url);
 
-    // 🔥 Dynamic CORS (handles preflight properly)
-    const origin = request.headers.get('Origin');
+    // 🔥 FIXED: stable origin (no dynamic issues)
+    const ORIGIN = 'https://hohetoai.vercel.app';
 
     const CORS_HEADERS = {
-      'Access-Control-Allow-Origin': origin || '*',
+      'Access-Control-Allow-Origin': ORIGIN,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers':
-        request.headers.get('Access-Control-Request-Headers') ||
-        'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'content-type, authorization',
     };
 
-    // 🔥 Always handle preflight FIRST
+    // 🔥 MUST: handle preflight FIRST
     if (request.method === 'OPTIONS') {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': request.headers.get('Origin') || '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
-}
+      return new Response(null, {
+        status: 204,
+        headers: CORS_HEADERS,
+      });
+    }
 
     // 🔥 Helper to attach CORS to ALL responses
     const withCORS = (res) => {
