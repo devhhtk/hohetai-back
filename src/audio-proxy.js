@@ -16,45 +16,58 @@ export async function resolveAudioUrl(url, env) {
     throw new Error('Unsupported URL. Please use a YouTube or Spotify link.');
   }
 
-  console.log(`[AudioProxy] Resolving: ${url}`);
+  const instances = [
+    'https://api.cobalt.tools/api/json',
+    'https://co.wuk.sh/api/json',
+    'https://cobalt.crstck.top/api/json',
+    'https://cobalt.miz.icu/api/json'
+  ];
 
-  // Using Cobalt API
-  // Note: Cobalt is an open-source downloader. We use their public API.
-  // Docs: https://github.com/imputnet/cobalt/blob/current/docs/API.md
-  try {
-    const response = await fetch('https://api.cobalt.tools/api/json', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        url: url,
-        audioFormat: 'wav', // Prefer WAV for the FFT extractor
-        isAudioOnly: true,
-        aQuality: 'max',
-        vCodec: 'h264' // ignored for audio only
-      })
-    });
+  let lastError = null;
 
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.message || `Cobalt API error: ${response.status}`);
+  for (const instance of instances) {
+    try {
+      console.log(`[AudioProxy] Trying instance: ${instance}`);
+      const response = await fetch(instance, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+          'Referer': 'https://cobalt.tools/'
+        },
+        body: JSON.stringify({
+          url: url,
+          audioFormat: 'wav',
+          isAudioOnly: true,
+          aQuality: 'max'
+        })
+      });
+
+      if (!response.ok) {
+        if (response.status === 403 || response.status === 429) {
+          console.warn(`[AudioProxy] ${instance} blocked/rate-limited (HTTP ${response.status})`);
+          continue; // Try next instance
+        }
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || `API error: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.status === 'error') {
+        console.warn(`[AudioProxy] ${instance} reported error: ${result.text}`);
+        continue;
+      }
+
+      if (result.status === 'redirect' || result.status === 'stream' || result.status === 'success') {
+        return result.url;
+      }
+    } catch (err) {
+      console.warn(`[AudioProxy] Failed with ${instance}: ${err.message}`);
+      lastError = err;
     }
-
-    const result = await response.json();
-
-    if (result.status === 'error') {
-      throw new Error(result.text || 'Failed to resolve audio URL');
-    }
-
-    if (result.status === 'redirect' || result.status === 'stream' || result.status === 'success') {
-      return result.url;
-    }
-
-    throw new Error(`Unexpected Cobalt status: ${result.status}`);
-  } catch (err) {
-    console.error(`[AudioProxy] Error: ${err.message}`);
-    throw new Error(`Could not extract audio from URL: ${err.message}`);
   }
+
+  throw new Error(`Could not extract audio from URL: All extraction nodes are currently busy or blocking requests. ${lastError ? lastError.message : ''}`);
 }
