@@ -18,6 +18,7 @@ import { extractImageSignal } from './image-extractor.js';
 import { signSignal, verifySignal, isSignalExpired } from './signal-auth.js';
 import { calculateTraits, formatTraitsForAI } from './creature-traits.js';
 import { describeCreature } from './dr-kai.js';
+import { resolveAudioUrl } from './audio-proxy.js';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': 'https://hohetoai.vercel.app',
@@ -129,6 +130,63 @@ async function handleExtract(request, env) {
     signature,
     expiresIn: 900, // 15 minutes in seconds
   });
+}
+
+// ─────────────────────────────────────────────────────────────
+// NEW: /api/extract-url
+// Resolves a YT/Spotify/Direct URL, fetches audio, extracts signal,
+// returns signed signal object
+// ─────────────────────────────────────────────────────────────
+
+async function handleExtractUrl(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return err('Invalid JSON body');
+  }
+
+  const url = body.url;
+  if (!url) return err('URL is required');
+
+  try {
+    // 1. Resolve to direct audio URL (using the proxy)
+    const directUrl = await resolveAudioUrl(url, env);
+    console.log(`[ExtractUrl] Resolved to: ${directUrl}`);
+
+    // 2. Fetch the audio bytes
+    const audioResp = await fetch(directUrl);
+    if (!audioResp.ok) throw new Error(`Failed to fetch audio from source: ${audioResp.status}`);
+    
+    // Check content-type to ensure it's audio (or at least try)
+    const ct = audioResp.headers.get('Content-Type') || '';
+    console.log(`[ExtractUrl] Audio content-type: ${ct}`);
+
+    const audioBuffer = await audioResp.arrayBuffer();
+
+    if (audioBuffer.byteLength < 44) {
+      throw new Error('Audio fetched from URL is too small or invalid');
+    }
+
+    // 3. Run extraction (existing logic)
+    const signal = await extractSignal(audioBuffer, request);
+
+    // 4. Sign the signal
+    const signature = await signSignal(signal, env.SIGNAL_SECRET);
+
+    return json({
+      success: true,
+      signal,
+      signature,
+      expiresIn: 900,
+      sourceUrl: url,
+      directUrl: directUrl
+    });
+
+  } catch (e) {
+    console.error(`[ExtractUrl] Failed: ${e.message}`);
+    return err(`URL extraction failed: ${e.message}`, 422);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -697,6 +755,11 @@ export default {
       // SIGNAL EXTRACT (audio)
       if (url.pathname === '/api/extract' && request.method === 'POST') {
         return withCORS(await handleExtract(request, env));
+      }
+
+      // SIGNAL EXTRACT (URL)
+      if (url.pathname === '/api/extract-url' && request.method === 'POST') {
+        return withCORS(await handleExtractUrl(request, env));
       }
 
       // SIGNAL EXTRACT (image)
