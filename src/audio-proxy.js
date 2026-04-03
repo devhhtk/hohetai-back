@@ -23,18 +23,24 @@ export async function resolveAudioUrl(url, env) {
     'https://cobalt.miz.icu/api/json'
   ];
 
+  const pipedInstances = [
+    'https://pipedapi.kavin.rocks',
+    'https://api.piped.victr.me',
+    'https://pipedapi.adminforge.de'
+  ];
+
   let lastError = null;
 
+  // 1. Try Cobalt Instances first (supports YT and Spotify)
   for (const instance of instances) {
     try {
-      console.log(`[AudioProxy] Trying instance: ${instance}`);
+      console.log(`[AudioProxy] Trying Cobalt: ${instance}`);
       const response = await fetch(instance, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-          'Referer': 'https://cobalt.tools/'
         },
         body: JSON.stringify({
           url: url,
@@ -44,30 +50,38 @@ export async function resolveAudioUrl(url, env) {
         })
       });
 
-      if (!response.ok) {
-        if (response.status === 403 || response.status === 429) {
-          console.warn(`[AudioProxy] ${instance} blocked/rate-limited (HTTP ${response.status})`);
-          continue; // Try next instance
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'redirect' || result.status === 'stream' || result.status === 'success') {
+          return result.url;
         }
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.message || `API error: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.status === 'error') {
-        console.warn(`[AudioProxy] ${instance} reported error: ${result.text}`);
-        continue;
-      }
-
-      if (result.status === 'redirect' || result.status === 'stream' || result.status === 'success') {
-        return result.url;
+      } else {
+        console.warn(`[AudioProxy] Cobalt ${instance} failed: ${response.status}`);
       }
     } catch (err) {
-      console.warn(`[AudioProxy] Failed with ${instance}: ${err.message}`);
       lastError = err;
     }
   }
 
-  throw new Error(`Could not extract audio from URL: All extraction nodes are currently busy or blocking requests. ${lastError ? lastError.message : ''}`);
+  // 2. Try Piped API Fallback (YouTube Only)
+  const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+  if (ytMatch) {
+    const videoId = ytMatch[1];
+    for (const piped of pipedInstances) {
+      try {
+        console.log(`[AudioProxy] Trying Piped Fallback: ${piped}`);
+        const response = await fetch(`${piped}/streams/${videoId}`);
+        if (!response.ok) continue;
+
+        const data = await response.json();
+        // Preferred audio stream (highest quality m4a/webm)
+        const audioStream = data.audioStreams?.find(s => s.format === 'M4A') || data.audioStreams?.[0];
+        if (audioStream?.url) return audioStream.url;
+      } catch (err) {
+        console.warn(`[AudioProxy] Piped ${piped} failed: ${err.message}`);
+      }
+    }
+  }
+
+  throw new Error(`Extraction failed: All nodes (Cobalt & Piped) are currently blocking requests from this IP. Please try a different video or direct audio link.`);
 }
