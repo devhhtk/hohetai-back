@@ -157,7 +157,7 @@ async function handleExtractUrl(request, env) {
     // 2. Fetch the audio bytes
     const audioResp = await fetch(directUrl);
     if (!audioResp.ok) throw new Error(`Failed to fetch audio from source: ${audioResp.status}`);
-    
+
     // Check content-type to ensure it's audio (or at least try)
     const ct = audioResp.headers.get('Content-Type') || '';
     console.log(`[ExtractUrl] Audio content-type: ${ct}`);
