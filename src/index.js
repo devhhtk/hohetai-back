@@ -6,7 +6,7 @@
 import { buildCreaturePrompt } from './prompt.js';
 import { generateImage } from './openai-image.js';
 import { uploadToB2, generateCreatureId } from './storage.js';
-import { createCreature, finalizeCreature, getCreature } from './db.js';
+import { createCreature, finalizeCreature, getCreature, getUserProfile, getLevels, ensureProfileExists } from './db.js';
 import { suggestName } from './sorting-hat.js';
 import { handleSaveCard } from './save-card.js';
 import { validateGenerateRequest, validateComposeRequest } from './validate.js';
@@ -640,6 +640,47 @@ async function handleGenerate(request, env) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// NEW: /api/profile
+// Fetches user profile (level, XP) and level config
+// ─────────────────────────────────────────────────────────────
+
+async function handleProfile(request, env) {
+  const userId = await getAuthUser(request, env);
+  if (!userId) return err('Unauthorized', 401);
+
+  try {
+    // 1. Ensure profile exists
+    const profile = await ensureProfileExists(env, userId);
+    if (!profile) return err('Could not fetch or create profile');
+
+    // 2. Fetch level config
+    const levels = await getLevels(env);
+
+    // 3. Find current level config and previous level config (for progress range)
+    const currentLevelConfig = levels.find(l => l.level === profile.level);
+    const nextLevelConfig = levels.find(l => l.level === (profile.level + 1));
+    const previousLevelConfig = levels.find(l => l.level === (profile.level - 1));
+
+    return json({
+      success: true,
+      profile: {
+        level: profile.level,
+        total_xp: profile.total_xp,
+      },
+      // The "target" is the XP required to complete the current level
+      target_level: currentLevelConfig || { level: profile.level, xp_required: 1000 },
+      // The "next level" target (for previewing what's next)
+      next_level: nextLevelConfig || { level: profile.level + 1, xp_required: 999999 },
+      // The "base" XP of the current level
+      base_xp: previousLevelConfig ? previousLevelConfig.xp_required : 0,
+    });
+  } catch (e) {
+    console.error('[Profile] Error:', e);
+    return err(`Profile fetch failed: ${e.message}`, 500);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // STAGE B — /api/compose
 // ─────────────────────────────────────────────────────────────
 
@@ -775,6 +816,11 @@ export default {
       // COMPOSE
       if (url.pathname === '/api/compose' && request.method === 'POST') {
         return withCORS(await handleCompose(request, env));
+      }
+
+      // PROFILE
+      if (url.pathname === '/api/profile' && request.method === 'GET') {
+        return withCORS(await handleProfile(request, env));
       }
 
       // GET CREATURE

@@ -121,3 +121,77 @@ export async function getCreature(env, id) {
   const rows = await resp.json();
   return rows[0] || null;
 }
+
+/**
+ * Get a user's profile record (level, total_xp).
+ */
+export async function getUserProfile(env, userId) {
+  const url = `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=*`;
+
+  const resp = await fetch(url, {
+    headers: supabaseHeaders(env),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    console.error(`[Supabase] Get Profile Failed:`, resp.status, err);
+    return null;
+  }
+
+  const rows = await resp.json();
+  return rows[0] || null;
+}
+
+/**
+ * Get all level requirements.
+ */
+export async function getLevels(env) {
+  const url = `${env.SUPABASE_URL}/rest/v1/levels?select=*&order=level.asc`;
+
+  const resp = await fetch(url, {
+    headers: supabaseHeaders(env),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    console.error(`[Supabase] Get Levels Failed:`, resp.status, err);
+    return [];
+  }
+
+  return await resp.json();
+}
+
+/**
+ * Ensure a user profile exists (creates one with defaults if missing).
+ */
+export async function ensureProfileExists(env, userId) {
+  const profile = await getUserProfile(env, userId);
+  if (profile) return profile;
+
+  // Create new profile
+  const url = `${env.SUPABASE_URL}/rest/v1/profiles`;
+  const body = {
+    id: userId,
+    level: 1,
+    total_xp: 0,
+    updated_at: new Date().toISOString(),
+  };
+
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      ...supabaseHeaders(env),
+      'Prefer': 'return=representation',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    console.error(`[Supabase] Create Profile Failed:`, resp.status, err);
+    return null;
+  }
+
+  const rows = await resp.json();
+  return rows[0];
+}
