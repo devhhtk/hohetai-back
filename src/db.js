@@ -166,7 +166,15 @@ export async function getLevels(env) {
  */
 export async function ensureProfileExists(env, userId) {
   const profile = await getUserProfile(env, userId);
-  if (profile) return profile;
+  const today = new Date().toISOString().split('T')[0];
+
+  if (profile) {
+    // If profile exists, check if streak needs update
+    if (profile.last_login_date !== today) {
+      return await updateStreak(env, userId, profile);
+    }
+    return profile;
+  }
 
   // Create new profile
   const url = `${env.SUPABASE_URL}/rest/v1/profiles`;
@@ -174,6 +182,10 @@ export async function ensureProfileExists(env, userId) {
     id: userId,
     level: 1,
     total_xp: 0,
+    streak_count: 1,
+    last_login_date: today,
+    last_reward_index: 0,
+    last_claimed_day: null,
     updated_at: new Date().toISOString(),
   };
 
@@ -197,12 +209,57 @@ export async function ensureProfileExists(env, userId) {
 }
 
 /**
+ * Internal helper to update login streak logic.
+ */
+async function updateStreak(env, userId, profile) {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+  let newStreak = profile.streak_count || 0;
+  
+  if (profile.last_login_date === yesterdayStr) {
+    newStreak += 1;
+  } else if (profile.last_login_date !== todayStr) {
+    // Missed a day or more
+    newStreak = 1;
+  } else {
+    // Already updated today
+    return profile;
+  }
+
+  // Cap streak at 30 for the monthly cycle
+  if (newStreak > 30) newStreak = 30;
+
+  const url = `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`;
+  const resp = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      ...supabaseHeaders(env),
+      'Prefer': 'return=representation',
+    },
+    body: JSON.stringify({
+      streak_count: newStreak,
+      last_login_date: todayStr,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!resp.ok) return profile; // Fail silently, return old profile
+  const rows = await resp.json();
+  return rows[0];
+}
+
+/**
  * Add XP to a user profile and check for Level Up.
  * Logic: Current level is n. Target to reach level n+1 is levels[level=n].xp_required.
  */
 export async function addExperience(env, userId, xpAmount) {
-  // 1. Get current profile
-  const profile = await getUserProfile(env, userId);
+  // 1. Get current profile (this will also update streak if needed)
+  const profile = await ensureProfileExists(env, userId);
   if (!profile) return null;
 
   const oldLevel = profile.level || 1;
@@ -213,8 +270,6 @@ export async function addExperience(env, userId, xpAmount) {
   const levels = await getLevels(env);
   const sortedLevels = [...levels].sort((a, b) => a.level - b.level);
 
-  // If newTotalXp >= levels[n].xp_required, it means you've completed level n 
-  // and are now at least Level n+1.
   for (const lvl of sortedLevels) {
     if (newTotalXp >= lvl.xp_required) {
       if (lvl.level >= newLevel) {
@@ -252,4 +307,44 @@ export async function addExperience(env, userId, xpAmount) {
     leveledUp,
     xpGained: xpAmount,
   };
+}
+
+/**
+ * Claim the next available streak reward.
+ */
+export async function claimStreakReward(env, userId, xpAmount) {
+  const profile = await ensureProfileExists(env, userId);
+  if (!profile) throw new Error('Profile not found');
+
+  const nextIndex = (profile.last_reward_index || 0) + 1;
+
+  // Verification: Sequential claim
+  if (nextIndex > profile.streak_count) {
+    throw new Error('Reward not yet earned. Keep logging in!');
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Logic: User grants reward index and we update the profile
+  const url = `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`;
+  const resp = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      ...supabaseHeaders(env),
+      'Prefer': 'return=representation',
+    },
+    body: JSON.stringify({
+      last_reward_index: nextIndex,
+      last_claimed_day: todayStr,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Claim failed: ${err}`);
+  }
+
+  // Grant the XP associated with this reward
+  return await addExperience(env, userId, xpAmount);
 }

@@ -6,8 +6,19 @@
 import { buildCreaturePrompt } from './prompt.js';
 import { generateImage } from './openai-image.js';
 import { uploadToB2, generateCreatureId } from './storage.js';
-import { createCreature, finalizeCreature, getCreature, getUserProfile, getLevels, ensureProfileExists, addExperience } from './db.js';
+import { createCreature, finalizeCreature, getCreature, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward } from './db.js';
 import { suggestName } from './sorting-hat.js';
+
+const STREAK_REWARDS = {
+  1: 50, 2: 50, 3: 50, 4: 50,
+  5: 100, 6: 100, 7: 100, 8: 100,
+  9: 150, 10: 150, 11: 150, 12: 150,
+  13: 200, 14: 200, 15: 200, 16: 200,
+  17: 250, 18: 250, 19: 250, 20: 250,
+  21: 300, 22: 300, 23: 300, 24: 300,
+  25: 500, 26: 500, 27: 500, 28: 500, 29: 500,
+  30: 1000
+};
 import { handleSaveCard } from './save-card.js';
 import { validateGenerateRequest, validateComposeRequest } from './validate.js';
 import { analyzeAudio, getRarityConfig, generateStats, selectTrope, selectOrigen, getRarityXP } from './rarity.js';
@@ -658,7 +669,7 @@ async function handleProfile(request, env) {
   if (!userId) return err('Unauthorized', 401);
 
   try {
-    // 1. Ensure profile exists
+    // 1. Ensure profile exists (and update streak if needed)
     const profile = await ensureProfileExists(env, userId);
     if (!profile) return err('Could not fetch or create profile');
 
@@ -675,6 +686,8 @@ async function handleProfile(request, env) {
       profile: {
         level: profile.level,
         total_xp: profile.total_xp,
+        streak_count: profile.streak_count || 0,
+        last_reward_index: profile.last_reward_index || 0,
       },
       // The "target" is the XP required to complete the current level
       target_level: currentLevelConfig || { level: profile.level, xp_required: 1000 },
@@ -686,6 +699,55 @@ async function handleProfile(request, env) {
   } catch (e) {
     console.error('[Profile] Error:', e);
     return err(`Profile fetch failed: ${e.message}`, 500);
+  }
+}
+
+/**
+ * GET /api/streak/status
+ * Returns current streak count and last claimed index.
+ */
+async function handleStreakStatus(request, env) {
+  const userId = await getAuthUser(request, env);
+  if (!userId) return err('Unauthorized', 401);
+
+  const profile = await ensureProfileExists(env, userId);
+  if (!profile) return err('Profile not found', 404);
+
+  return json({
+    success: true,
+    streak_count: profile.streak_count || 0,
+    last_reward_index: profile.last_reward_index || 0,
+    rewards: STREAK_REWARDS
+  });
+}
+
+/**
+ * POST /api/streak/claim
+ * Sequential claim of the next available reward.
+ */
+async function handleStreakClaim(request, env) {
+  const userId = await getAuthUser(request, env);
+  if (!userId) return err('Unauthorized', 401);
+
+  const profile = await getUserProfile(env, userId);
+  if (!profile) return err('Profile not found', 404);
+
+  const nextIndex = (profile.last_reward_index || 0) + 1;
+  const xpAmount = STREAK_REWARDS[nextIndex];
+
+  if (!xpAmount) return err('No more rewards to claim in this cycle', 400);
+
+  try {
+    const result = await claimStreakReward(env, userId, xpAmount);
+    return json({
+      success: true,
+      claimed_day: nextIndex,
+      xp_gained: xpAmount,
+      profile: result.profile,
+      leveledUp: result.leveledUp
+    });
+  } catch (e) {
+    return err(e.message, 400);
   }
 }
 
@@ -830,6 +892,16 @@ export default {
       // PROFILE
       if (url.pathname === '/api/profile' && request.method === 'GET') {
         return withCORS(await handleProfile(request, env));
+      }
+
+      // STREAK STATUS
+      if (url.pathname === '/api/streak/status' && request.method === 'GET') {
+        return withCORS(await handleStreakStatus(request, env));
+      }
+
+      // STREAK CLAIM
+      if (url.pathname === '/api/streak/claim' && request.method === 'POST') {
+        return withCORS(await handleStreakClaim(request, env));
       }
 
       // GET CREATURE
