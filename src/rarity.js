@@ -61,6 +61,18 @@ export function scoreToRarity(score) {
 }
 
 /**
+ * Get XP reward for a given rarity.
+ */
+export function getRarityXP(rarity) {
+  const rewards = {
+    Abundant: 40,
+    Endemic: 125,
+    Holotype: 450,
+  };
+  return rewards[rarity] || 40;
+}
+
+/**
  * Select a morphology deterministically from audio features.
  */
 export function selectMorphology(audioFeatures, rarityLabel) {

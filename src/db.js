@@ -195,3 +195,61 @@ export async function ensureProfileExists(env, userId) {
   const rows = await resp.json();
   return rows[0];
 }
+
+/**
+ * Add XP to a user profile and check for Level Up.
+ * Logic: Current level is n. Target to reach level n+1 is levels[level=n].xp_required.
+ */
+export async function addExperience(env, userId, xpAmount) {
+  // 1. Get current profile
+  const profile = await getUserProfile(env, userId);
+  if (!profile) return null;
+
+  const oldLevel = profile.level || 1;
+  const newTotalXp = (profile.total_xp || 0) + xpAmount;
+  let newLevel = oldLevel;
+
+  // 2. Fetch all levels to check for progress
+  const levels = await getLevels(env);
+  const sortedLevels = [...levels].sort((a, b) => a.level - b.level);
+
+  // If newTotalXp >= levels[n].xp_required, it means you've completed level n 
+  // and are now at least Level n+1.
+  for (const lvl of sortedLevels) {
+    if (newTotalXp >= lvl.xp_required) {
+      if (lvl.level >= newLevel) {
+        newLevel = lvl.level + 1;
+      }
+    }
+  }
+
+  const leveledUp = newLevel > oldLevel;
+
+  // 3. Update profile
+  const url = `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`;
+  const resp = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      ...supabaseHeaders(env),
+      'Prefer': 'return=representation',
+    },
+    body: JSON.stringify({
+      total_xp: newTotalXp,
+      level: newLevel,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    console.error(`[Supabase] Update XP Failed:`, resp.status, err);
+    return null;
+  }
+
+  const resultRows = await resp.json();
+  return {
+    profile: resultRows[0],
+    leveledUp,
+    xpGained: xpAmount,
+  };
+}

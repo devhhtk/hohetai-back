@@ -6,11 +6,11 @@
 import { buildCreaturePrompt } from './prompt.js';
 import { generateImage } from './openai-image.js';
 import { uploadToB2, generateCreatureId } from './storage.js';
-import { createCreature, finalizeCreature, getCreature, getUserProfile, getLevels, ensureProfileExists } from './db.js';
+import { createCreature, finalizeCreature, getCreature, getUserProfile, getLevels, ensureProfileExists, addExperience } from './db.js';
 import { suggestName } from './sorting-hat.js';
 import { handleSaveCard } from './save-card.js';
 import { validateGenerateRequest, validateComposeRequest } from './validate.js';
-import { analyzeAudio, getRarityConfig, generateStats, selectTrope, selectOrigen } from './rarity.js';
+import { analyzeAudio, getRarityConfig, generateStats, selectTrope, selectOrigen, getRarityXP } from './rarity.js';
 import { getSeasonFromAudio } from './season.js';
 import { getMorphologyByName, getMorphologiesByTier, RARITY_TIERS } from './morphologies.js';
 import { extractSignal } from './signal-extractor.js';
@@ -182,7 +182,6 @@ async function handleExtractUrl(request, env) {
       sourceUrl: url,
       directUrl: directUrl
     });
-
   } catch (e) {
     console.error(`[ExtractUrl] Failed: ${e.message}`);
     return err(`URL extraction failed: ${e.message}`, 422);
@@ -586,6 +585,14 @@ async function handleGenerate(request, env) {
     return err(`Database Save Failed: ${e.message}`, 500);
   }
 
+  // 6. GRANT XP ──────────────────────────────
+  const xpAmount = getRarityXP(rarity);
+  const xpResult = await addExperience(env, userId, xpAmount);
+  
+  if (xpResult?.leveledUp) {
+    console.log(`[XP] USER LEVELED UP! ${xpResult.profile.level - 1} → ${xpResult.profile.level}`);
+  }
+
   // Response uses locked taxonomy: origen · trope · rarity
   return json({
     success: true,
@@ -622,6 +629,8 @@ async function handleGenerate(request, env) {
     season,
     labels: morphology.labels || [],
     signal_verified: !!verifiedSignal,
+    // PROGRESS TRACKING
+    progress: xpResult || { xpGained: xpAmount, leveledUp: false },
     // Debug — Dr. Kai output + FULL IMAGE PROMPT (visible in browser console)
     _debug: {
       drKaiDescription: kidsFields ? JSON.stringify(kidsFields).slice(0, 500) : (tweenFields ? JSON.stringify(tweenFields).slice(0, 500) : ''),
