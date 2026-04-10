@@ -56,6 +56,7 @@ export async function createCreature(env, data) {
     waveform_hash: data.waveform_hash || `hash-${timestamp}`,
     generation_number: data.generation_number || 0,
     card_url: data.creature_url || data.card_url || '',
+    card_image_url: data.card_image_url || data.creature_url || data.card_url || '',
     frame_variant: data.frame_variant || 'standard',
     annotation_features: data.labels || data.annotation_features || [],
     prompt_hash: data.prompt_hash || `prompt-${timestamp}`,

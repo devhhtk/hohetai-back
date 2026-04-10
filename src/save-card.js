@@ -72,7 +72,7 @@ export async function handleSaveCard(request, env) {
 
   // Update Supabase
   try {
-    const updates = { card_url: cardUrl };
+    const updates = { card_image_url: cardUrl };
     if (creatureName.trim()) {
       updates.creature_name = creatureName.trim();
     }
