@@ -1,4 +1,4 @@
-name = "hohetai-back"
+name = "hohetai-api"
 main = "src/index.js"
 compatibility_date = "2025-09-15"
 compatibility_flags = ["nodejs_compat"]
