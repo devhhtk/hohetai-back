@@ -61,7 +61,7 @@ export async function handleSaveCard(request, env) {
   }
 
   // Upload to B2
-  const cardFileName = `cards/${creatureId}-card.png`;
+  const cardFileName = `creatures/${creatureId}-card.png`;
   let cardUrl;
   try {
     cardUrl = await uploadToB2(cardBytes, cardFileName, 'image/png', env);
