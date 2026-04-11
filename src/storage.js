@@ -60,7 +60,7 @@ export async function uploadToB2(imageBytes, fileName, contentType = 'image/png'
       Authorization: uploadData.authorizationToken,
       'X-Bz-File-Name': encodeURIComponent(fileName),
       'Content-Type': contentType,
-      'Content-Length': imageBytes.length.toString(),
+      'Content-Length': (imageBytes.byteLength || imageBytes.length).toString(),
       'X-Bz-Content-Sha1': sha1,
     },
     body: imageBytes,

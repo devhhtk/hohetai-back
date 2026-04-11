@@ -51,7 +51,8 @@ export async function handleSaveCard(request, env) {
   // Get PNG bytes from uploaded blob
   let cardBytes;
   try {
-    cardBytes = await cardFile.arrayBuffer();
+    const arrayBuffer = await cardFile.arrayBuffer();
+    cardBytes = new Uint8Array(arrayBuffer);
   } catch {
     return json({ error: 'Failed to read card file' }, 400);
   }
@@ -72,7 +73,10 @@ export async function handleSaveCard(request, env) {
 
   // Update Supabase
   try {
-    const updates = { card_image_url: cardUrl };
+    const updates = { 
+      card_image_url: cardUrl,
+      card_url: cardUrl // Ensure both fields are synced for the UI
+    };
     if (creatureName.trim()) {
       updates.creature_name = creatureName.trim();
     }
