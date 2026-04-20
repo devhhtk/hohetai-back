@@ -349,3 +349,23 @@ export async function claimStreakReward(env, userId, xpAmount) {
   // Grant the XP associated with this reward
   return await addExperience(env, userId, xpAmount);
 }
+
+/**
+ * Get public creatures for the explore page.
+ */
+export async function getExploreCreatures(env, limit = 50) {
+  // Filter: card_image_url not null AND not empty, is_public true, ordered by newest
+  const url = `${env.SUPABASE_URL}/rest/v1/creatures?select=*&card_image_url=not.is.null&card_image_url=neq.&is_public=eq.true&order=created_at.desc&limit=${limit}`;
+
+  const resp = await fetch(url, {
+    headers: supabaseHeaders(env),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    console.error(`[Supabase] Get Explore Failed:`, resp.status, err);
+    return [];
+  }
+
+  return await resp.json();
+}

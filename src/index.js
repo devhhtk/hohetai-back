@@ -6,7 +6,7 @@
 import { buildCreaturePrompt } from './prompt.js';
 import { generateImage } from './openai-image.js';
 import { uploadToB2, generateCreatureId } from './storage.js';
-import { createCreature, finalizeCreature, getCreature, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward } from './db.js';
+import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward } from './db.js';
 import { suggestName } from './sorting-hat.js';
 
 const STREAK_REWARDS = {
@@ -913,6 +913,17 @@ export default {
           return withCORS(json(creature));
         } catch (e) {
           return withCORS(err(`Failed to fetch creature: ${e.message}`, 500));
+        }
+      }
+
+      // EXPLORE (Public Creatures)
+      if (url.pathname === '/api/explore' && request.method === 'GET') {
+        try {
+          const limit = parseInt(url.searchParams.get('limit')) || 50;
+          const creatures = await getExploreCreatures(env, limit);
+          return withCORS(json(creatures));
+        } catch (e) {
+          return withCORS(err(`Failed to fetch explore: ${e.message}`, 500));
         }
       }
 
