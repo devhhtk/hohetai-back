@@ -354,9 +354,8 @@ export async function claimStreakReward(env, userId, xpAmount) {
  * Get public creatures for the explore page.
  */
 export async function getExploreCreatures(env, limit = 50) {
-  // Filter: card_image_url not null AND not empty, is_public true, ordered by newest
-  // Join: profiles table for display_name
-  const url = `${env.SUPABASE_URL}/rest/v1/creatures?select=*,profiles(display_name)&card_image_url=not.is.null&card_image_url=neq.&is_public=eq.true&order=created_at.desc&limit=${limit}`;
+  // 1. Fetch creatures with specific filters
+  const url = `${env.SUPABASE_URL}/rest/v1/creatures?select=*&card_image_url=not.is.null&is_public=eq.true&order=created_at.desc&limit=${limit}`;
 
   const resp = await fetch(url, {
     headers: supabaseHeaders(env),
@@ -364,9 +363,39 @@ export async function getExploreCreatures(env, limit = 50) {
 
   if (!resp.ok) {
     const err = await resp.text();
-    console.error(`[Supabase] Get Explore Failed:`, resp.status, err);
+    console.error(`[Supabase] Get Explore Creatures Failed:`, resp.status, err);
     return [];
   }
 
-  return await resp.json();
+  const creatures = await resp.json();
+
+  // 2. Manual Join: Fetch profiles for the unique user_ids found
+  const userIds = [...new Set(creatures.map(c => c.user_id).filter(Boolean))];
+  
+  if (userIds.length > 0) {
+    try {
+      const profileUrl = `${env.SUPABASE_URL}/rest/v1/profiles?id=in.(${userIds.join(',')})&select=id,display_name`;
+      const profileResp = await fetch(profileUrl, {
+        headers: supabaseHeaders(env),
+      });
+
+      if (profileResp.ok) {
+        const profiles = await profileResp.json();
+        const profileMap = {};
+        profiles.forEach(p => profileMap[p.id] = p);
+
+        // Attach profile data to each creature
+        creatures.forEach(c => {
+          if (c.user_id && profileMap[c.user_id]) {
+            c.profiles = profileMap[c.user_id];
+          }
+        });
+      }
+    } catch (e) {
+      console.error(`[Supabase] Manual Profile Join Failed:`, e.message);
+      // Non-fatal, creatures will just show default names
+    }
+  }
+
+  return creatures;
 }
