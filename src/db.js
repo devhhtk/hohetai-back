@@ -353,7 +353,7 @@ export async function claimStreakReward(env, userId, xpAmount) {
 /**
  * Get public creatures for the explore page.
  */
-export async function getExploreCreatures(env, limit = 50) {
+export async function getExploreCreatures(env, limit = 50, currentUserId = null) {
   // 1. Fetch creatures: Must have card_image_url and be public
   // We use PostgREST count features to get likes and comments counts
   const url = `${env.SUPABASE_URL}/rest/v1/creatures?select=*,likes_count:creature_likes(count),comments_count:creature_comments(count)&card_image_url=not.is.null&card_image_url=not.eq.&is_public=eq.true&order=created_at.desc&limit=${limit}`;
@@ -374,10 +374,33 @@ export async function getExploreCreatures(env, limit = 50) {
   creatures = creatures.map(c => ({
     ...c,
     likes_count: c.likes_count?.[0]?.count || 0,
-    comments_count: c.comments_count?.[0]?.count || 0
+    comments_count: c.comments_count?.[0]?.count || 0,
+    user_has_liked: false // Default
   }));
 
-  // 2. Manual Join: Fetch profiles for the unique user_ids found
+  // 2. Check if current user has liked these creatures
+  if (currentUserId && creatures.length > 0) {
+    try {
+      const creatureIds = creatures.map(c => c.id);
+      const likesUrl = `${env.SUPABASE_URL}/rest/v1/creature_likes?user_id=eq.${currentUserId}&creature_id=in.(${creatureIds.join(',')})&select=creature_id`;
+      const likesResp = await fetch(likesUrl, {
+        headers: supabaseHeaders(env),
+      });
+
+      if (likesResp.ok) {
+        const likedIds = (await likesResp.json()).map(l => l.creature_id);
+        creatures.forEach(c => {
+          if (likedIds.includes(c.id)) {
+            c.user_has_liked = true;
+          }
+        });
+      }
+    } catch (e) {
+      console.error(`[Supabase] User Liked Check Failed:`, e.message);
+    }
+  }
+
+  // 3. Manual Join: Fetch profiles for the unique user_ids found
   const userIds = [...new Set(creatures.map(c => c.user_id).filter(Boolean))];
   
   if (userIds.length > 0) {
