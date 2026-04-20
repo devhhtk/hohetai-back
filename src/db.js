@@ -354,8 +354,8 @@ export async function claimStreakReward(env, userId, xpAmount) {
  * Get public creatures for the explore page.
  */
 export async function getExploreCreatures(env, limit = 50) {
-  // 1. Fetch creatures with specific filters
-  const url = `${env.SUPABASE_URL}/rest/v1/creatures?select=*&card_image_url=not.is.null&is_public=eq.true&order=created_at.desc&limit=${limit}`;
+  // 1. Fetch creatures: Must have card_image_url and be public
+  const url = `${env.SUPABASE_URL}/rest/v1/creatures?select=*&card_image_url=not.is.null&card_image_url=not.eq.&is_public=eq.true&order=created_at.desc&limit=${limit}`;
 
   const resp = await fetch(url, {
     headers: supabaseHeaders(env),
