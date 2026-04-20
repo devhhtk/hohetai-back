@@ -6,7 +6,7 @@
 import { buildCreaturePrompt } from './prompt.js';
 import { generateImage } from './openai-image.js';
 import { uploadToB2, generateCreatureId } from './storage.js';
-import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward } from './db.js';
+import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward, getCreatureComments, toggleLike, addComment } from './db.js';
 import { suggestName } from './sorting-hat.js';
 
 const STREAK_REWARDS = {
@@ -803,6 +803,67 @@ async function handleCompose(request, env) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// LIKES & COMMENTS HANDLERS
+// ─────────────────────────────────────────────────────────────
+
+async function handleGetComments(request, env) {
+  const url = new URL(request.url);
+  const creatureId = url.searchParams.get('creature_id');
+  if (!creatureId) return err('Creature ID required');
+
+  try {
+    const comments = await getCreatureComments(env, creatureId);
+    return json(comments);
+  } catch (e) {
+    return err(`Failed to fetch comments: ${e.message}`, 500);
+  }
+}
+
+async function handleToggleLike(request, env) {
+  const userId = await getAuthUser(request, env);
+  if (!userId) return err('Unauthorized', 401);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return err('Invalid JSON body');
+  }
+
+  const { creature_id } = body;
+  if (!creature_id) return err('Creature ID required');
+
+  try {
+    const result = await toggleLike(env, userId, creature_id);
+    return json(result);
+  } catch (e) {
+    return err(`Failed to toggle like: ${e.message}`, 500);
+  }
+}
+
+async function handleAddComment(request, env) {
+  const userId = await getAuthUser(request, env);
+  if (!userId) return err('Unauthorized', 401);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return err('Invalid JSON body');
+  }
+
+  const { creature_id, content } = body;
+  if (!creature_id || !content) return err('Creature ID and content required');
+
+  try {
+    const comment = await addComment(env, userId, creature_id, content);
+    return json(comment);
+  } catch (e) {
+    return err(`Failed to add comment: ${e.message}`, 500);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // HEALTH CHECK
 // ─────────────────────────────────────────────────────────────
 
@@ -930,6 +991,21 @@ export default {
       // SAVE CARD
       if (url.pathname === '/api/save-card' && request.method === 'POST') {
         return withCORS(await handleSaveCard(request, env));
+      }
+
+      // COMMENTS (GET)
+      if (url.pathname === '/api/comments' && request.method === 'GET') {
+        return withCORS(await handleGetComments(request, env));
+      }
+
+      // LIKE (POST)
+      if (url.pathname === '/api/like' && request.method === 'POST') {
+        return withCORS(await handleToggleLike(request, env));
+      }
+
+      // COMMENT (POST)
+      if (url.pathname === '/api/comment' && request.method === 'POST') {
+        return withCORS(await handleAddComment(request, env));
       }
 
       // IMAGE PROXY

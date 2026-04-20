@@ -355,7 +355,8 @@ export async function claimStreakReward(env, userId, xpAmount) {
  */
 export async function getExploreCreatures(env, limit = 50) {
   // 1. Fetch creatures: Must have card_image_url and be public
-  const url = `${env.SUPABASE_URL}/rest/v1/creatures?select=*&card_image_url=not.is.null&card_image_url=not.eq.&is_public=eq.true&order=created_at.desc&limit=${limit}`;
+  // We use PostgREST count features to get likes and comments counts
+  const url = `${env.SUPABASE_URL}/rest/v1/creatures?select=*,likes_count:creature_likes(count),comments_count:creature_comments(count)&card_image_url=not.is.null&card_image_url=not.eq.&is_public=eq.true&order=created_at.desc&limit=${limit}`;
 
   const resp = await fetch(url, {
     headers: supabaseHeaders(env),
@@ -367,7 +368,14 @@ export async function getExploreCreatures(env, limit = 50) {
     return [];
   }
 
-  const creatures = await resp.json();
+  let creatures = await resp.json();
+
+  // Transform counts from array of objects to single number
+  creatures = creatures.map(c => ({
+    ...c,
+    likes_count: c.likes_count?.[0]?.count || 0,
+    comments_count: c.comments_count?.[0]?.count || 0
+  }));
 
   // 2. Manual Join: Fetch profiles for the unique user_ids found
   const userIds = [...new Set(creatures.map(c => c.user_id).filter(Boolean))];
@@ -398,4 +406,107 @@ export async function getExploreCreatures(env, limit = 50) {
   }
 
   return creatures;
+}
+
+/**
+ * Get comments for a specific creature, including user display names.
+ */
+export async function getCreatureComments(env, creatureId) {
+  const url = `${env.SUPABASE_URL}/rest/v1/creature_comments?creature_id=eq.${creatureId}&select=*&order=created_at.asc`;
+
+  const resp = await fetch(url, {
+    headers: supabaseHeaders(env),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    console.error(`[Supabase] Get Comments Failed:`, resp.status, err);
+    return [];
+  }
+
+  const comments = await resp.json();
+  
+  // Manual Join for profiles
+  const userIds = [...new Set(comments.map(c => c.user_id).filter(Boolean))];
+  if (userIds.length > 0) {
+    try {
+      const profileUrl = `${env.SUPABASE_URL}/rest/v1/profiles?id=in.(${userIds.join(',')})&select=id,display_name,avatar_url`;
+      const profileResp = await fetch(profileUrl, {
+        headers: supabaseHeaders(env),
+      });
+
+      if (profileResp.ok) {
+        const profiles = await profileResp.json();
+        const profileMap = {};
+        profiles.forEach(p => profileMap[p.id] = p);
+
+        comments.forEach(c => {
+          if (c.user_id && profileMap[c.user_id]) {
+            c.profiles = profileMap[c.user_id];
+          }
+        });
+      }
+    } catch (e) {
+      console.error(`[Supabase] Comments Profile Join Failed:`, e.message);
+    }
+  }
+
+  return comments;
+}
+
+/**
+ * Toggle a like for a creature.
+ */
+export async function toggleLike(env, userId, creatureId) {
+  // Check if like exists
+  const checkUrl = `${env.SUPABASE_URL}/rest/v1/creature_likes?user_id=eq.${userId}&creature_id=eq.${creatureId}&select=id`;
+  const checkResp = await fetch(checkUrl, {
+    headers: supabaseHeaders(env),
+  });
+
+  const existing = await checkResp.json();
+
+  if (existing && existing.length > 0) {
+    // Unlike
+    const delUrl = `${env.SUPABASE_URL}/rest/v1/creature_likes?id=eq.${existing[0].id}`;
+    await fetch(delUrl, {
+      method: 'DELETE',
+      headers: supabaseHeaders(env),
+    });
+    return { liked: false };
+  } else {
+    // Like
+    const addUrl = `${env.SUPABASE_URL}/rest/v1/creature_likes`;
+    await fetch(addUrl, {
+      method: 'POST',
+      headers: supabaseHeaders(env),
+      body: JSON.stringify({ user_id: userId, creature_id: creatureId }),
+    });
+    return { liked: true };
+  }
+}
+
+/**
+ * Add a comment to a creature.
+ */
+export async function addComment(env, userId, creatureId, content) {
+  const url = `${env.SUPABASE_URL}/rest/v1/creature_comments`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: supabaseHeaders(env),
+    body: JSON.stringify({
+      user_id: userId,
+      creature_id: creatureId,
+      content: content,
+      created_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Failed to add comment: ${err}`);
+  }
+
+  const rows = await resp.json();
+  return rows[0];
 }
