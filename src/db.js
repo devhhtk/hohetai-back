@@ -382,18 +382,26 @@ export async function getExploreCreatures(env, limit = 50, currentUserId = null)
   if (currentUserId && creatures.length > 0) {
     try {
       const creatureIds = creatures.map(c => c.id);
-      const likesUrl = `${env.SUPABASE_URL}/rest/v1/creature_likes?user_id=eq.${currentUserId}&creature_id=in.(${creatureIds.join(',')})&select=creature_id`;
-      const likesResp = await fetch(likesUrl, {
-        headers: supabaseHeaders(env),
-      });
-
-      if (likesResp.ok) {
-        const likedIds = (await likesResp.json()).map(l => l.creature_id);
-        creatures.forEach(c => {
-          if (likedIds.includes(c.id)) {
-            c.user_has_liked = true;
-          }
+      // Ensure all IDs are valid for the 'in' filter
+      const validIds = creatureIds.filter(id => id && id.length > 20);
+      
+      if (validIds.length > 0) {
+        const likesUrl = `${env.SUPABASE_URL}/rest/v1/creature_likes?user_id=eq.${currentUserId}&creature_id=in.(${validIds.join(',')})&select=creature_id`;
+        const likesResp = await fetch(likesUrl, {
+          headers: supabaseHeaders(env),
         });
+
+        if (likesResp.ok) {
+          const likedData = await likesResp.json();
+          if (Array.isArray(likedData)) {
+            const likedIds = likedData.map(l => l.creature_id);
+            creatures.forEach(c => {
+              if (likedIds.includes(c.id)) {
+                c.user_has_liked = true;
+              }
+            });
+          }
+        }
       }
     } catch (e) {
       console.error(`[Supabase] User Liked Check Failed:`, e.message);
@@ -489,22 +497,29 @@ export async function toggleLike(env, userId, creatureId) {
 
   const existing = await checkResp.json();
 
-  if (existing && existing.length > 0) {
+  if (Array.isArray(existing) && existing.length > 0) {
     // Unlike
     const delUrl = `${env.SUPABASE_URL}/rest/v1/creature_likes?id=eq.${existing[0].id}`;
-    await fetch(delUrl, {
+    const delResp = await fetch(delUrl, {
       method: 'DELETE',
       headers: supabaseHeaders(env),
     });
+    if (!delResp.ok) throw new Error(`Delete like failed: ${delResp.status}`);
     return { liked: false };
   } else {
     // Like
     const addUrl = `${env.SUPABASE_URL}/rest/v1/creature_likes`;
-    await fetch(addUrl, {
+    const addResp = await fetch(addUrl, {
       method: 'POST',
       headers: supabaseHeaders(env),
       body: JSON.stringify({ user_id: userId, creature_id: creatureId }),
     });
+    if (!addResp.ok) {
+      const err = await addResp.text();
+      // If we get a 409 (unique constraint), it means user already liked it, so we just return liked: true
+      if (addResp.status === 409) return { liked: true };
+      throw new Error(`Add like failed: ${addResp.status} ${err}`);
+    }
     return { liked: true };
   }
 }
