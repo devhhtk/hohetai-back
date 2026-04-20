@@ -353,10 +353,19 @@ export async function claimStreakReward(env, userId, xpAmount) {
 /**
  * Get public creatures for the explore page.
  */
-export async function getExploreCreatures(env, limit = 50, currentUserId = null) {
+export async function getExploreCreatures(env, limit = 50, currentUserId = null, sort = 'latest') {
   // 1. Fetch creatures: Must have card_image_url and be public
   // We use PostgREST count features to get likes and comments counts
-  const url = `${env.SUPABASE_URL}/rest/v1/creatures?select=*,likes_count:creature_likes(count),comments_count:creature_comments(count)&card_image_url=not.is.null&card_image_url=not.eq.&is_public=eq.true&order=created_at.desc&limit=${limit}`;
+  let url = `${env.SUPABASE_URL}/rest/v1/creatures?select=*,likes_count:creature_likes(count),comments_count:creature_comments(count)&card_image_url=not.is.null&card_image_url=not.eq.&is_public=eq.true&limit=${limit}`;
+
+  // Apply SQL-level ordering for Latest
+  if (sort === 'latest' || sort === 'all') {
+    url += '&order=created_at.desc';
+  } else if (sort === 'trending' || sort === 'most_loved') {
+    // We'll fetch and sort in memory since PostgREST ordering by aggregates via URL is limited.
+    // We order by ID as a stable base.
+    url += '&order=id.desc';
+  }
 
   const resp = await fetch(url, {
     headers: supabaseHeaders(env),
@@ -377,6 +386,16 @@ export async function getExploreCreatures(env, limit = 50, currentUserId = null)
     comments_count: c.comments_count?.[0]?.count || 0,
     user_has_liked: false // Default
   }));
+
+  // Apply In-Memory Sorting for hybrid types
+  if (sort === 'most_loved') {
+    creatures.sort((a, b) => b.likes_count - a.likes_count);
+  } else if (sort === 'trending') {
+    // Trending = Most likes + comments combined
+    creatures.sort((a, b) => (b.likes_count + b.comments_count) - (a.likes_count + a.comments_count));
+  } else if (sort === 'random') {
+    creatures.sort(() => Math.random() - 0.5);
+  }
 
   // 2. Check if current user has liked these creatures
   if (currentUserId && creatures.length > 0) {

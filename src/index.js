@@ -982,7 +982,8 @@ export default {
         try {
           const userId = await getAuthUser(request, env);
           const limit = parseInt(url.searchParams.get('limit')) || 50;
-          const creatures = await getExploreCreatures(env, limit, userId);
+          const sort = url.searchParams.get('sort') || 'latest';
+          const creatures = await getExploreCreatures(env, limit, userId, sort);
           return withCORS(json(creatures));
         } catch (e) {
           return withCORS(err(`Failed to fetch explore: ${e.message}`, 500));
