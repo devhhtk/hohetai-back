@@ -355,7 +355,8 @@ export async function claimStreakReward(env, userId, xpAmount) {
  */
 export async function getExploreCreatures(env, limit = 50) {
   // Filter: card_image_url not null AND not empty, is_public true, ordered by newest
-  const url = `${env.SUPABASE_URL}/rest/v1/creatures?select=*&card_image_url=not.is.null&card_image_url=neq.&is_public=eq.true&order=created_at.desc&limit=${limit}`;
+  // Join: profiles table for display_name
+  const url = `${env.SUPABASE_URL}/rest/v1/creatures?select=*,profiles(display_name)&card_image_url=not.is.null&card_image_url=neq.&is_public=eq.true&order=created_at.desc&limit=${limit}`;
 
   const resp = await fetch(url, {
     headers: supabaseHeaders(env),
