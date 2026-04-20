@@ -11,11 +11,11 @@
 // ══════════════════════════════════════════════════════════════
 
 const KIDS_ENVIRONMENTS = {
-  Terratrope:  'Soft warm earth background — gentle round hills and smooth rocks, warm golden light, light puffs of dusty clouds. Muted mineral tones, sage greens, warm stone grays. Calm and grounded.',
-  Aquatrope:   'Soft ocean background — gentle teal-blue water with smooth rolling waves, sparkling droplets, cool aqua shimmer. Peaceful and watery.',
-  Aerotrope:   'Soft sky background — bright cyan fading to pale turquoise, big fluffy clouds, gentle wind swirls. Open, bright, and airy.',
-  Pyrotrope:   'Soft warm background — golden-orange horizon glow, smooth warm clouds, tiny floating embers. Warm and cozy, not hot or scary.',
-  Floratrope:  'Soft forest background — gentle green canopy light, curling vines, round mushrooms at edges, tiny glowing pollen dots. Lush and magical.',
+  Terratrope: 'Soft warm earth background — gentle round hills and smooth rocks, warm golden light, light puffs of dusty clouds. Muted mineral tones, sage greens, warm stone grays. Calm and grounded.',
+  Aquatrope: 'Soft ocean background — gentle teal-blue water with smooth rolling waves, sparkling droplets, cool aqua shimmer. Peaceful and watery.',
+  Aerotrope: 'Soft sky background — bright cyan fading to pale turquoise, big fluffy clouds, gentle wind swirls. Open, bright, and airy.',
+  Pyrotrope: 'Soft warm background — golden-orange horizon glow, smooth warm clouds, tiny floating embers. Warm and cozy, not hot or scary.',
+  Floratrope: 'Soft forest background — gentle green canopy light, curling vines, round mushrooms at edges, tiny glowing pollen dots. Lush and magical.',
   Prismatrope: 'Soft crystal background — gentle turquoise glow, smooth crystal shapes catching rainbow light, soft prismatic beams. Sparkling and wondrous.',
 };
 
@@ -24,11 +24,11 @@ const KIDS_ENVIRONMENTS = {
 // ══════════════════════════════════════════════════════════════
 
 const TWEEN_ENVIRONMENTS = {
-  Terratrope:  'Environmentally reflective rocky upland habitat focused on the immediate foreground: weathered boulders, fractured earth, sparse moss, muted mineral tones. Creature positioned on a slightly raised rock ledge. No wide scenic vista, no distant mountains or detailed horizon. Background softly blurred and understated — darker and more muted than the creature so its form and colors pop clearly. Shallow grounded depth of field. Background should feel ancient, heavy, and stone-born.',
-  Aquatrope:   'Environmentally reflective tidal-pool / estuary habitat focused on the immediate foreground: slick rocks, shallow rippled water around the creature\'s limbs, a few reeds or algae clusters. Creature positioned low in shallow water or on wet stone. No wide river scene, no distant hills or open water. Any distant background softly blurred and understated — darker and more muted than the creature. Background should feel patient, predatory, and amphibious.',
-  Aerotrope:   'Environmentally reflective windswept cliffside habitat focused on the immediate foreground: jagged stone perch beneath the creature, subtle airborne grit or feather-light debris. Creature perched on a rocky ledge or cliff lip. No wide open sky or sweeping cloudscapes. Background is tight dark storm-cloud atmosphere behind the creature — darker and more muted so the creature pops. Background should feel elevated, exposed, and aerodynamic.',
-  Pyrotrope:   'Environmentally reflective volcanic habitat focused on the immediate foreground: cracked basalt slab, ash-dusted ground, faint heat shimmer. Creature crouched on dark volcanic rock. No wide lava landscape or dramatic eruptions. Background is dark smoky haze — darker and more muted than the creature. Restrained fissure glow only in immediate ground cracks. Background should feel geothermally active, harsh, and pressurized rather than chaotic.',
-  Floratrope:  'Environmentally reflective old-growth forest habitat focused on the immediate foreground: mossy earth, gnarled roots, leaf litter, shelf fungi, ferns at the creature\'s feet. Creature standing on forest floor. No wide forest panorama or detailed canopy. Background is dark dense foliage — darker and more muted than the creature, with softly filtered light. Background should feel ancient, dense, and alive.',
+  Terratrope: 'Environmentally reflective rocky upland habitat focused on the immediate foreground: weathered boulders, fractured earth, sparse moss, muted mineral tones. Creature positioned on a slightly raised rock ledge. No wide scenic vista, no distant mountains or detailed horizon. Background softly blurred and understated — darker and more muted than the creature so its form and colors pop clearly. Shallow grounded depth of field. Background should feel ancient, heavy, and stone-born.',
+  Aquatrope: 'Environmentally reflective tidal-pool / estuary habitat focused on the immediate foreground: slick rocks, shallow rippled water around the creature\'s limbs, a few reeds or algae clusters. Creature positioned low in shallow water or on wet stone. No wide river scene, no distant hills or open water. Any distant background softly blurred and understated — darker and more muted than the creature. Background should feel patient, predatory, and amphibious.',
+  Aerotrope: 'Environmentally reflective windswept cliffside habitat focused on the immediate foreground: jagged stone perch beneath the creature, subtle airborne grit or feather-light debris. Creature perched on a rocky ledge or cliff lip. No wide open sky or sweeping cloudscapes. Background is tight dark storm-cloud atmosphere behind the creature — darker and more muted so the creature pops. Background should feel elevated, exposed, and aerodynamic.',
+  Pyrotrope: 'Environmentally reflective volcanic habitat focused on the immediate foreground: cracked basalt slab, ash-dusted ground, faint heat shimmer. Creature crouched on dark volcanic rock. No wide lava landscape or dramatic eruptions. Background is dark smoky haze — darker and more muted than the creature. Restrained fissure glow only in immediate ground cracks. Background should feel geothermally active, harsh, and pressurized rather than chaotic.',
+  Floratrope: 'Environmentally reflective old-growth forest habitat focused on the immediate foreground: mossy earth, gnarled roots, leaf litter, shelf fungi, ferns at the creature\'s feet. Creature standing on forest floor. No wide forest panorama or detailed canopy. Background is dark dense foliage — darker and more muted than the creature, with softly filtered light. Background should feel ancient, dense, and alive.',
   Prismatrope: 'Environmentally reflective mineral-rich geologic habitat focused on the immediate foreground: streaked stone, exposed crystal seams, fractured deposits around the creature. Creature positioned on a mineral ledge. No wide cave panorama or dramatic crystal cavern. Background is dark geological interior — darker and more muted than the creature, with restrained prismatic edge refractions only. Background should feel rare, geological, and quietly luminous.',
 };
 
@@ -204,7 +204,7 @@ export function buildCreaturePrompt({
     const patterning = k.patterning || '';
 
     if (rarity === 'Holotype') return kidsHolotype(creature, colors, patterning, env);
-    if (rarity === 'Endemic')  return kidsEndemic(creature, colors, patterning, env);
+    if (rarity === 'Endemic') return kidsEndemic(creature, colors, patterning, env);
     return kidsAbundant(creature, colors, patterning, env);
   }
 
@@ -220,6 +220,6 @@ export function buildCreaturePrompt({
   const patterning = t.patterning || '';
 
   if (rarity === 'Holotype') return tweenHolotype(creature, eyes, colors, patterning, env, displayName);
-  if (rarity === 'Endemic')  return tweenEndemic(creature, eyes, colors, patterning, env, displayName);
+  if (rarity === 'Endemic') return tweenEndemic(creature, eyes, colors, patterning, env, displayName);
   return tweenAbundant(creature, eyes, colors, patterning, env, displayName);
 }
