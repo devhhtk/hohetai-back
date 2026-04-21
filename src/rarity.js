@@ -232,26 +232,6 @@ export function selectTrope(audioFeatures, origen = 'Resogen') {
     overrides.push({ trope: 'Prismatrope', confidence: 4, tag: 'shimmer-glass' });
   }
 
-  // ── SONATROPE overrides ───────────────────────────────────
-  // 7A: Melodic / polyphonic music (high chroma, high harmony, dynamic)
-  if (chromaStrength > 0.7 && harmonicRatio > 0.5 && dynamicRange > 0.4) {
-    overrides.push({ trope: 'Sonatrope', confidence: 5, tag: 'melodic-tonal' });
-  }
-  // 7B: Percussive rhythm / beat (clear pulses, high onset density)
-  if (onsetDensity > 0.7 && fluxProxy > 0.6 && dynamicRange > 0.5) {
-    overrides.push({ trope: 'Sonatrope', confidence: 4, tag: 'rhythmic-beat' });
-  }
-
-  // ── MEGATROPE overrides ───────────────────────────────────
-  // 8A: Absolute silence / void (near zero RMS, flat but empty)
-  if (rms < 0.02 && spectralFlatness > 0.5) {
-    overrides.push({ trope: 'Megatrope', confidence: 5, tag: 'absolute-void' });
-  }
-  // 8B: Crushing bass / seismic weight (extreme bass, very high RMS)
-  if (bassEnergy > 0.85 && rms > 0.75 && roughness > 0.5) {
-    overrides.push({ trope: 'Megatrope', confidence: 5, tag: 'crushing-weight' });
-  }
-
   // ── Check if any override fired ───────────────────────────
   if (overrides.length > 0) {
     // Pick highest confidence — ties broken by first match
@@ -283,10 +263,6 @@ export function selectTrope(audioFeatures, origen = 'Resogen') {
                  zcrNorm,
 
     Prismatrope: kurtosisNorm * (1 - spectralFlatness) * chromaStrength * centroidNorm,
-
-    Sonatrope:   chromaStrength * harmonicRatio * onsetDensity * (1 - roughness),
-
-    Megatrope:   bassEnergy * rms * roughness * (1 - spectralFlatness),
   };
 
   // Find winner

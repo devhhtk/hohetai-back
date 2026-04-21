@@ -17,8 +17,6 @@ const KIDS_ENVIRONMENTS = {
   Pyrotrope: 'Soft warm background — golden-orange horizon glow, smooth warm clouds, tiny floating embers. Warm and cozy, not hot or scary.',
   Floratrope: 'Soft forest background — gentle green canopy light, curling vines, round mushrooms at edges, tiny glowing pollen dots. Lush and magical.',
   Prismatrope: 'Soft crystal background — gentle turquoise glow, smooth crystal shapes catching rainbow light, soft prismatic beams. Sparkling and wondrous.',
-  Sonatrope: 'Soft musical background — gentle neon ripples, floating musical notes, soft glowing soundwaves. Rhythmic and bright.',
-  Megatrope: 'Soft heavy background — floating dark rocks, gentle purple gravitational wisps, soft heavy shadows. Powerful but safe.',
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -32,8 +30,6 @@ const TWEEN_ENVIRONMENTS = {
   Pyrotrope: 'Environmentally reflective volcanic habitat focused on the immediate foreground: cracked basalt slab, ash-dusted ground, faint heat shimmer. Creature crouched on dark volcanic rock. No wide lava landscape or dramatic eruptions. Background is dark smoky haze — darker and more muted than the creature. Restrained fissure glow only in immediate ground cracks. Background should feel geothermally active, harsh, and pressurized rather than chaotic.',
   Floratrope: 'Environmentally reflective old-growth forest habitat focused on the immediate foreground: mossy earth, gnarled roots, leaf litter, shelf fungi, ferns at the creature\'s feet. Creature standing on forest floor. No wide forest panorama or detailed canopy. Background is dark dense foliage — darker and more muted than the creature, with softly filtered light. Background should feel ancient, dense, and alive.',
   Prismatrope: 'Environmentally reflective mineral-rich geologic habitat focused on the immediate foreground: streaked stone, exposed crystal seams, fractured deposits around the creature. Creature positioned on a mineral ledge. No wide cave panorama or dramatic crystal cavern. Background is dark geological interior — darker and more muted than the creature, with restrained prismatic edge refractions only. Background should feel rare, geological, and quietly luminous.',
-  Sonatrope: 'Environmentally reflective acoustic-chamber habitat focused on the immediate foreground: smooth polished surfaces, floating resonance sigils, visible light-ripples on the ground. Creature standing in the center of a circular platform. No wide auditorium, no complex architectural details. Background is dark and echoing — darker and more muted than the creature. Background should feel harmonic, vibratory, and resonant.',
-  Megatrope: 'Environmentally reflective void-shattered habitat focused on the immediate foreground: jagged levitating obsidian plates, intense gravitational lensing, dark purple energy fissures under the creature\'s feet. Creature positioned in the center of a dimensional rift. No wide cosmic panorama or distant stars. Background is a deep lightless void — darker and more muted than the creature. Background should feel massive, crushing, and primordial.',
 };
 
 // ══════════════════════════════════════════════════════════════

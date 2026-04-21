@@ -30,8 +30,6 @@ CREATURE RULES:
   Pyrotrope: warm sandy/ember coloring, charred-edge markings, desert textures
   Floratrope: moss patches, tiny mushrooms, flower buds, leaf ears, vine accents
   Prismatrope: crystal nubs, prismatic sheen, geode-like patches
-  Sonatrope: vibrant neon colors, soft musical ripples, floating melody symbols, rhythmic glowing patches
-  Megatrope: massive obsidian plates, gentle purple gravitational wisps, soft heavy shadows, powerful but safe build
 - RARITY controls complexity:
   ABUNDANT: Simple animal + ONE subtle trope hint. Patterning: minimal.
   ENDEMIC: Creative chimera (2-3 sources) + visible trope features + ONE grown feature. Structured patterning.
@@ -70,8 +68,6 @@ CREATURE RULES:
   Pyrotrope: charred plates, hairline cracks, heat-scarred, volcanic adaptations
   Floratrope: bark plates, moss overgrowth, fern sprouts, shelf mushrooms, vine tendons
   Prismatrope: crystal eruptions, faceted mineral growths, prismatic edge refractions
-  Sonatrope: neon energy resonance lines, acoustic resonators in joints, floating harmonic sigils, visible soundwave ripples
-  Megatrope: colossal jagged obsidian plates, gravitational distortion fissures, deep purple void energy, crushing presence
 - RARITY controls complexity:
   ABUNDANT: Muted earths, weathered, battle-worn. Minimal patterning. Standard build.
   ENDEMIC: VIVID NATURAL ANIMAL COLORING. Horns/spines ~20% larger. Bold real-world patterning (name the animal: "banding like a fire salamander"). Mature alpha in peak display.
