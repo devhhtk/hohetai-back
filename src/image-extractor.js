@@ -398,7 +398,13 @@ function getVisualTropeHint(visual) {
     Aquatrope:   ((1 - brightness) * 0.4) + ((1 - edgeDensity) * 0.4) + (meanSaturation * 0.2),
     
     // Darker, rougher, or high contrast (stone, earth)
-    Terratrope:  ((1 - brightness) * 0.4) + (edgeDensity * 0.3) + (luminanceContrast * 0.3)
+    Terratrope:  ((1 - brightness) * 0.4) + (edgeDensity * 0.3) + (luminanceContrast * 0.3),
+
+    // High complexity, high hue spread, vibrant (neon/music)
+    Sonatrope:   (colorComplexity * 0.4) + (hueSpread * 0.4) + (brightness * 0.2),
+
+    // Very dark, high texture, high contrast (void/obsidian)
+    Megatrope:   ((1 - brightness) * 0.5) + (textureComplexity * 0.3) + (luminanceContrast * 0.2)
   };
 
   let bestKey = 'Terratrope';

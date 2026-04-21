@@ -19,6 +19,8 @@ export const TROPES = {
   Pyrotrope:   { domain: 'fire',    morphTiers: ['reptile_prehistoric','mammal_prehistoric','mythological'], skin: 'Charred fissures, molten glow, shimmering heat haze' },
   Floratrope:  { domain: 'plant',   morphTiers: ['plant_based','amphibian','hybrid'],               skin: 'Sprouting vines, bark skin, pollen aura, mycelium trails' },
   Prismatrope: { domain: 'crystal', morphTiers: ['microbial','crustacean','aquatic_prehistoric'],    skin: 'Crystal growths, frost facets, refraction membranes' },
+  Sonatrope:   { domain: 'sound',   morphTiers: ['microbial','aerial','mammal'],                   skin: 'Neon resonance patterns, acoustic ripples, floating musical sigils' },
+  Megatrope:   { domain: 'void',    morphTiers: ['reptile_prehistoric','terrestrial','mythological'], skin: 'Massive jagged plates, gravitational distortion, dark matter aura' },
 };
 
 // ── RARITY (3) — How rare the creature is, driven by ARS ──
@@ -34,7 +36,7 @@ export const RARITY_TIERS = {
 
 // ── TROPE LIST (for selection) ──
 export const TROPE_NAMES = [
-  'Terratrope', 'Aquatrope', 'Aerotrope', 'Pyrotrope', 'Floratrope', 'Prismatrope',
+  'Terratrope', 'Aquatrope', 'Aerotrope', 'Pyrotrope', 'Floratrope', 'Prismatrope', 'Sonatrope', 'Megatrope'
 ];
 
 // ── ORIGEN LIST ──
