@@ -353,10 +353,12 @@ async function handleGenerate(request, env) {
       origen = 'Resogen';
     }
 
-    const analysis = analyzeAudio(serverFeatures);
+    const analysis = analyzeAudio(serverFeatures, origen);
     rarity = analysis.rarity;
     morphology = analysis.morphology;
-    trope = analysis.trope;
+    
+    // For images, prioritize the visual-first trope mapping
+    trope = (origen === 'Imagen' && intel.tropeSignal) ? intel.tropeSignal : analysis.trope;
     if (!origen) origen = analysis.origen;
     stats = generateStats(serverFeatures, parseFloat(intel.arsAdjusted) * 100);
     season = verifiedSignal.context.season;

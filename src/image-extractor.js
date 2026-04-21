@@ -380,12 +380,37 @@ function getVisualTropeHint(visual) {
   const { warmth, brightness, edgeDensity, meanSaturation,
     textureComplexity, symmetryScore, luminanceContrast } = visual;
 
-  if (warmth > 0.7 && luminanceContrast > 0.5) return 'Pyrotrope';
-  if (brightness > 0.65 && edgeDensity < 0.3) return 'Aerotrope';
-  if (warmth < 0.4 && brightness > 0.5 && symmetryScore > 0.6) return 'Prismatrope';
-  if (warmth > 0.5 && meanSaturation > 0.4 && textureComplexity > 0.4) return 'Floratrope';
-  if (brightness < 0.4 && edgeDensity < 0.4) return 'Aquatrope';
-  return 'Terratrope';
+  // Use a scoring wheel to find the best fit, making it much harder to "trap" into one trope
+  const scores = {
+    // Highly warm and high contrast (lava, fire)
+    Pyrotrope:   (warmth * 0.5) + (luminanceContrast * 0.3) + (meanSaturation * 0.2),
+    
+    // Very bright and smooth (clouds, sky)
+    Aerotrope:   (brightness * 0.6) + ((1 - edgeDensity) * 0.4),
+    
+    // Cold, bright, and highly symmetric (crystals, ice)
+    Prismatrope: ((1 - warmth) * 0.4) + (brightness * 0.3) + (symmetryScore * 0.3),
+    
+    // Saturated and textured (plants, organic life)
+    Floratrope:  (meanSaturation * 0.4) + (textureComplexity * 0.4) + (warmth * 0.2),
+    
+    // Dark, smooth/fluid (deep water)
+    Aquatrope:   ((1 - brightness) * 0.4) + ((1 - edgeDensity) * 0.4) + (meanSaturation * 0.2),
+    
+    // Darker, rougher, or high contrast (stone, earth)
+    Terratrope:  ((1 - brightness) * 0.4) + (edgeDensity * 0.3) + (luminanceContrast * 0.3)
+  };
+
+  let bestKey = 'Terratrope';
+  let bestScore = -1;
+  for (const [key, score] of Object.entries(scores)) {
+    if (score > bestScore) {
+      bestScore = score;
+      bestKey = key;
+    }
+  }
+
+  return bestKey;
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -112,7 +112,7 @@ export function selectMorphology(audioFeatures, rarityLabel) {
  * Phase 2: If no override, run 6-trope scoring wheel
  * All features come from server-side FFT extraction — no Meyda proxies needed.
  */
-export function selectTrope(audioFeatures) {
+export function selectTrope(audioFeatures, origen = 'Resogen') {
   const {
     energy = 0.5,
     bassEnergy = 0.5,
@@ -147,14 +147,12 @@ export function selectTrope(audioFeatures) {
   const fluxProxy    = Math.min(1, onsetDensity * 0.6 + dynamicRange * 0.4);
 
   // ═══════════════════════════════════════════════════════════
-  // PHASE 1: ACOUSTIC SIGNATURE OVERRIDES
-  // Strict thresholds — only fire when the signal is unmistakable
-  // ~5-10% of recordings should trigger an override
-  // ═══════════════════════════════════════════════════════════
-
+  const isAudio = origen === 'Resogen' || origen === 'Primogen';
   const overrides = [];
 
-  // ── TERRATROPE overrides ──────────────────────────────────
+  // Phase 1 Overrides are ONLY for audio sources (as they detect specific waveform patterns)
+  if (isAudio) {
+    // ── TERRATROPE overrides ──────────────────────────────────
   // 1A: Deep sustained rumble (earthquake, heavy machinery, low growl)
   if (bassEnergy > 0.7 && centroidNorm < 0.2 && rms > 0.5 && dynamicRange < 0.2) {
     overrides.push({ trope: 'Terratrope', confidence: 4, tag: 'deep-rumble' });
@@ -241,6 +239,7 @@ export function selectTrope(audioFeatures) {
     console.log(`[Trope] Override: ${overrides[0].trope} (${overrides[0].tag}) | ${overrides.length} total matches`);
     return overrides[0].trope;
   }
+}
 
   // ═══════════════════════════════════════════════════════════
   // PHASE 2: SCORING WHEEL
@@ -340,13 +339,13 @@ export function getRarityConfig(rarityLabel) {
 /**
  * Full analysis pipeline — returns all creature attributes from audio features.
  */
-export function analyzeAudio(audioFeatures) {
+export function analyzeAudio(audioFeatures, origen = 'Resogen') {
   const score    = calculateRarityScore(audioFeatures);
   const rarity   = scoreToRarity(score);
   const morphology = selectMorphology(audioFeatures, rarity);
-  const trope    = selectTrope(audioFeatures);
-  const origen   = selectOrigen('audio');
+  const trope    = selectTrope(audioFeatures, origen);
+  const finalOrigen = selectOrigen(origen === 'Imagen' ? 'image' : 'audio');
   const stats    = generateStats(audioFeatures, score);
 
-  return { score, rarity, morphology, trope, origen, stats };
+  return { score, rarity, morphology, trope, origen: finalOrigen, stats };
 }
