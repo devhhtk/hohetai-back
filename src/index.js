@@ -893,8 +893,15 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // 🔥 FIXED: stable origin (no dynamic issues)
-    const ORIGIN = 'https://hohetoai.vercel.app';
+    // 🔥 FIXED: Support both local and production origins
+    const allowedOrigins = [
+      'https://hohetoai.vercel.app',
+      'http://localhost:5500',
+      'http://127.0.0.1:5500',
+      'http://localhost:3000'
+    ];
+    const origin = request.headers.get('Origin');
+    const ORIGIN = allowedOrigins.includes(origin) ? origin : 'https://hohetoai.vercel.app';
 
     const CORS_HEADERS = {
       'Access-Control-Allow-Origin': ORIGIN,
