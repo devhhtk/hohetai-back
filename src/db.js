@@ -539,6 +539,23 @@ export async function toggleLike(env, userId, creatureId) {
       if (addResp.status === 409) return { liked: true };
       throw new Error(`Add like failed: ${addResp.status} ${err}`);
     }
+
+    // TRIGGER NOTIFICATION
+    try {
+      const creature = await getCreature(env, creatureId);
+      if (creature && creature.user_id && creature.user_id !== userId) {
+        await createNotification(env, {
+          recipient_id: creature.user_id,
+          actor_id: userId,
+          type: 'like',
+          creature_id: creatureId,
+          metadata: { message: `Someone liked your creature ${creature.creature_name || 'Card'}!` }
+        });
+      }
+    } catch (e) {
+      console.error('[Notification] Like trigger failed:', e.message);
+    }
+
     return { liked: true };
   }
 }
@@ -565,5 +582,50 @@ export async function addComment(env, userId, creatureId, content) {
   }
 
   const rows = await resp.json();
-  return rows[0];
+  const comment = rows[0];
+
+  // TRIGGER NOTIFICATION
+  try {
+    const creature = await getCreature(env, creatureId);
+    if (creature && creature.user_id && creature.user_id !== userId) {
+      await createNotification(env, {
+        recipient_id: creature.user_id,
+        actor_id: userId,
+        type: 'comment',
+        creature_id: creatureId,
+        comment_id: comment.id,
+        metadata: { message: `Someone commented on your creature ${creature.creature_name || 'Card'}!` }
+      });
+    }
+  } catch (e) {
+    console.error('[Notification] Comment trigger failed:', e.message);
+  }
+
+  return comment;
+}
+
+/**
+ * Internal helper to create a notification in the DB.
+ */
+export async function createNotification(env, data) {
+  const url = `${env.SUPABASE_URL}/rest/v1/notifications`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: supabaseHeaders(env),
+    body: JSON.stringify({
+      recipient_id: data.recipient_id,
+      actor_id: data.actor_id || null,
+      type: data.type,
+      creature_id: data.creature_id || null,
+      comment_id: data.comment_id || null,
+      metadata: data.metadata || {},
+      is_read: false,
+      created_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    console.error(`[Supabase] Create Notification Failed:`, resp.status, err);
+  }
 }
