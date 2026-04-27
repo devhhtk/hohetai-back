@@ -6,7 +6,7 @@
 import { buildCreaturePrompt } from './prompt.js';
 import { generateImage } from './openai-image.js';
 import { uploadToB2, generateCreatureId } from './storage.js';
-import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward, getCreatureComments, toggleLike, addComment, saveTeam, getTeam, findOpponents } from './db.js';
+import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward, getCreatureComments, toggleLike, addComment, saveTeam, getTeam, findOpponents, findWaitingBattle, createBattle, joinBattle, getBattle } from './db.js';
 import { suggestName } from './sorting-hat.js';
 
 const STREAK_REWARDS = {
@@ -901,6 +901,44 @@ async function handleSaveTeam(request, env) {
   }
 }
 
+async function handleBattleMatch(request, env) {
+  const userId = await getAuthUser(request, env);
+  if (!userId) return err('Unauthorized', 401);
+
+  try {
+    // 1. Check if user has an active team
+    const team = await getTeam(env, userId);
+    if (!team) return err('Active team required. Please create one first.', 403);
+
+    // 2. Try to find a waiting battle
+    const waitingBattle = await findWaitingBattle(env, userId);
+    if (waitingBattle) {
+      // Join as player B
+      const joined = await joinBattle(env, waitingBattle.id, userId, team.id);
+      return json({ success: true, battle: joined, role: 'player_b' });
+    }
+
+    // 3. No waiting battle, create a new one
+    const newBattle = await createBattle(env, userId, team.id);
+    return json({ success: true, battle: newBattle, role: 'player_a' });
+  } catch (e) {
+    return err(`Matchmaking failed: ${e.message}`, 500);
+  }
+}
+
+async function handleGetBattleStatus(request, env) {
+  const url = new URL(request.url);
+  const battleId = url.searchParams.get('id');
+  if (!battleId) return err('Battle ID required');
+
+  try {
+    const battle = await getBattle(env, battleId);
+    return json({ success: true, battle });
+  } catch (e) {
+    return err(`Failed to get battle: ${e.message}`, 500);
+  }
+}
+
 async function handleMatchmaking(request, env) {
   const userId = await getAuthUser(request, env);
   if (!userId) return err('Unauthorized', 401);
@@ -1076,6 +1114,16 @@ export default {
       // TEAMS (POST)
       if (url.pathname === '/api/teams' && request.method === 'POST') {
         return withCORS(await handleSaveTeam(request, env));
+      }
+
+      // BATTLE MATCH (POST)
+      if (url.pathname === '/api/battle/match' && request.method === 'POST') {
+        return withCORS(await handleBattleMatch(request, env));
+      }
+
+      // BATTLE STATUS (GET)
+      if (url.pathname === '/api/battle/status' && request.method === 'GET') {
+        return withCORS(await handleGetBattleStatus(request, env));
       }
 
       // MATCHMAKING (GET)

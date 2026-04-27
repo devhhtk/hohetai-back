@@ -710,3 +710,85 @@ export async function findOpponents(env, excludeUserId, limit = 5) {
   if (!resp.ok) return [];
   return await resp.json();
 }
+
+/**
+ * Find a battle waiting for an opponent.
+ * Exclude the user's own waiting battles.
+ */
+export async function findWaitingBattle(env, excludeUserId) {
+  // Battle is waiting if player_b_id is null and status is 'waiting'
+  // and created_at is within the last 60 seconds (avoiding stale battles)
+  const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+  const url = `${env.SUPABASE_URL}/rest/v1/battles?status=eq.waiting&player_b_id=is.null&player_a_id=neq.${excludeUserId}&created_at=gt.${oneMinuteAgo}&order=created_at.asc&limit=1`;
+  
+  const resp = await fetch(url, {
+    headers: supabaseHeaders(env),
+  });
+
+  if (!resp.ok) return null;
+  const rows = await resp.json();
+  return rows[0] || null;
+}
+
+/**
+ * Create a new battle record in 'waiting' status.
+ */
+export async function createBattle(env, userId, teamId) {
+  const url = `${env.SUPABASE_URL}/rest/v1/battles`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: supabaseHeaders(env),
+    body: JSON.stringify({
+      player_a_id: userId,
+      player_a_team_id: teamId,
+      status: 'waiting',
+      battle_log: [],
+      rewards: {},
+      created_at: new Date().toISOString()
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Create battle failed: ${resp.status} ${err}`);
+  }
+  const rows = await resp.json();
+  return rows[0];
+}
+
+/**
+ * Join an existing waiting battle.
+ */
+export async function joinBattle(env, battleId, userId, teamId) {
+  const url = `${env.SUPABASE_URL}/rest/v1/battles?id=eq.${battleId}`;
+  const resp = await fetch(url, {
+    method: 'PATCH',
+    headers: supabaseHeaders(env),
+    body: JSON.stringify({
+      player_b_id: userId,
+      player_b_team_id: teamId,
+      status: 'ongoing'
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Join battle failed: ${resp.status} ${err}`);
+  }
+  const rows = await resp.json();
+  return rows[0];
+}
+
+/**
+ * Get battle by ID.
+ */
+export async function getBattle(env, battleId) {
+  const url = `${env.SUPABASE_URL}/rest/v1/battles?id=eq.${battleId}&select=*,player_a:profiles!player_a_id(display_name,avatar_url),player_b:profiles!player_b_id(display_name,avatar_url)`;
+  const resp = await fetch(url, {
+    headers: supabaseHeaders(env),
+  });
+
+  if (!resp.ok) return null;
+  const rows = await resp.json();
+  return rows[0] || null;
+}
