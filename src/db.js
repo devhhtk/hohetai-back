@@ -215,13 +215,13 @@ export async function ensureProfileExists(env, userId) {
 async function updateStreak(env, userId, profile) {
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
-  
+
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.toISOString().split('T')[0];
 
   let newStreak = profile.streak_count || 0;
-  
+
   if (profile.last_login_date === yesterdayStr) {
     newStreak += 1;
   } else if (profile.last_login_date !== todayStr) {
@@ -403,7 +403,7 @@ export async function getExploreCreatures(env, limit = 50, currentUserId = null,
       const creatureIds = creatures.map(c => c.id);
       // Ensure all IDs are valid for the 'in' filter
       const validIds = creatureIds.filter(id => id && id.length > 20);
-      
+
       if (validIds.length > 0) {
         const likesUrl = `${env.SUPABASE_URL}/rest/v1/creature_likes?user_id=eq.${currentUserId}&creature_id=in.(${validIds.join(',')})&select=creature_id`;
         const likesResp = await fetch(likesUrl, {
@@ -429,7 +429,7 @@ export async function getExploreCreatures(env, limit = 50, currentUserId = null,
 
   // 3. Manual Join: Fetch profiles for the unique user_ids found
   const userIds = [...new Set(creatures.map(c => c.user_id).filter(Boolean))];
-  
+
   if (userIds.length > 0) {
     try {
       const profileUrl = `${env.SUPABASE_URL}/rest/v1/profiles?id=in.(${userIds.join(',')})&select=id,display_name`;
@@ -475,7 +475,7 @@ export async function getCreatureComments(env, creatureId) {
   }
 
   const comments = await resp.json();
-  
+
   // Manual Join for profiles
   const userIds = [...new Set(comments.map(c => c.user_id).filter(Boolean))];
   if (userIds.length > 0) {
@@ -702,7 +702,7 @@ export async function getTeam(env, userId) {
  */
 export async function findOpponents(env, excludeUserId, limit = 5) {
   const url = `${env.SUPABASE_URL}/rest/v1/teams?user_id=neq.${excludeUserId}&is_active=eq.true&limit=${limit}&select=*,profiles(display_name,avatar_url)`;
-  
+
   const resp = await fetch(url, {
     headers: supabaseHeaders(env),
   });
