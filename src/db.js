@@ -696,3 +696,17 @@ export async function getTeam(env, userId) {
   const rows = await resp.json();
   return rows[0] || null;
 }
+
+/**
+ * Find other users with active teams.
+ */
+export async function findOpponents(env, excludeUserId, limit = 5) {
+  const url = `${env.SUPABASE_URL}/rest/v1/teams?user_id=neq.${excludeUserId}&is_active=eq.true&limit=${limit}&select=*,profiles(display_name,avatar_url)`;
+  
+  const resp = await fetch(url, {
+    headers: supabaseHeaders(env),
+  });
+
+  if (!resp.ok) return [];
+  return await resp.json();
+}

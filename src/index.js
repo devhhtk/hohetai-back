@@ -6,7 +6,7 @@
 import { buildCreaturePrompt } from './prompt.js';
 import { generateImage } from './openai-image.js';
 import { uploadToB2, generateCreatureId } from './storage.js';
-import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward, getCreatureComments, toggleLike, addComment, saveTeam, getTeam } from './db.js';
+import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward, getCreatureComments, toggleLike, addComment, saveTeam, getTeam, findOpponents } from './db.js';
 import { suggestName } from './sorting-hat.js';
 
 const STREAK_REWARDS = {
@@ -901,6 +901,18 @@ async function handleSaveTeam(request, env) {
   }
 }
 
+async function handleMatchmaking(request, env) {
+  const userId = await getAuthUser(request, env);
+  if (!userId) return err('Unauthorized', 401);
+
+  try {
+    const opponents = await findOpponents(env, userId);
+    return json({ success: true, opponents });
+  } catch (e) {
+    return err(`Matchmaking failed: ${e.message}`, 500);
+  }
+}
+
 
 // ─────────────────────────────────────────────────────────────
 // HEALTH CHECK
@@ -1066,6 +1078,10 @@ export default {
         return withCORS(await handleSaveTeam(request, env));
       }
 
+      // MATCHMAKING (GET)
+      if (url.pathname === '/api/matchmaking' && request.method === 'GET') {
+        return withCORS(await handleMatchmaking(request, env));
+      }
 
       // IMAGE PROXY
       if (url.pathname.startsWith('/api/image/') && request.method === 'GET') {
