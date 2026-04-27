@@ -629,3 +629,66 @@ export async function createNotification(env, data) {
     console.error(`[Supabase] Create Notification Failed:`, resp.status, err);
   }
 }
+
+/**
+ * Create or update a user team.
+ */
+export async function saveTeam(env, userId, creatureIds, name = 'My Squad') {
+  // Check if team exists
+  const checkUrl = `${env.SUPABASE_URL}/rest/v1/teams?user_id=eq.${userId}&select=id`;
+  const checkResp = await fetch(checkUrl, {
+    headers: supabaseHeaders(env),
+  });
+
+  const existing = await checkResp.json();
+
+  if (Array.isArray(existing) && existing.length > 0) {
+    // Update
+    const updateUrl = `${env.SUPABASE_URL}/rest/v1/teams?id=eq.${existing[0].id}`;
+    const updateResp = await fetch(updateUrl, {
+      method: 'PATCH',
+      headers: supabaseHeaders(env),
+      body: JSON.stringify({
+        creature_ids: creatureIds,
+        name: name,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+    if (!updateResp.ok) throw new Error(`Update team failed: ${updateResp.status}`);
+    const rows = await updateResp.json();
+    return rows[0];
+  } else {
+    // Create
+    const addUrl = `${env.SUPABASE_URL}/rest/v1/teams`;
+    const addResp = await fetch(addUrl, {
+      method: 'POST',
+      headers: supabaseHeaders(env),
+      body: JSON.stringify({
+        user_id: userId,
+        creature_ids: creatureIds,
+        name: name,
+        created_at: new Date().toISOString(),
+      }),
+    });
+    if (!addResp.ok) {
+      const err = await addResp.text();
+      throw new Error(`Create team failed: ${addResp.status} ${err}`);
+    }
+    const rows = await addResp.json();
+    return rows[0];
+  }
+}
+
+/**
+ * Get a user's team.
+ */
+export async function getTeam(env, userId) {
+  const url = `${env.SUPABASE_URL}/rest/v1/teams?user_id=eq.${userId}&select=*`;
+  const resp = await fetch(url, {
+    headers: supabaseHeaders(env),
+  });
+
+  if (!resp.ok) return null;
+  const rows = await resp.json();
+  return rows[0] || null;
+}

@@ -6,7 +6,7 @@
 import { buildCreaturePrompt } from './prompt.js';
 import { generateImage } from './openai-image.js';
 import { uploadToB2, generateCreatureId } from './storage.js';
-import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward, getCreatureComments, toggleLike, addComment } from './db.js';
+import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward, getCreatureComments, toggleLike, addComment, saveTeam, getTeam } from './db.js';
 import { suggestName } from './sorting-hat.js';
 
 const STREAK_REWARDS = {
@@ -865,6 +865,43 @@ async function handleAddComment(request, env) {
   }
 }
 
+async function handleGetTeam(request, env) {
+  const userId = await getAuthUser(request, env);
+  if (!userId) return err('Unauthorized', 401);
+
+  try {
+    const team = await getTeam(env, userId);
+    return json({ success: true, team });
+  } catch (e) {
+    return err(`Failed to fetch team: ${e.message}`, 500);
+  }
+}
+
+async function handleSaveTeam(request, env) {
+  const userId = await getAuthUser(request, env);
+  if (!userId) return err('Unauthorized', 401);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return err('Invalid JSON body');
+  }
+
+  const { creature_ids, name } = body;
+  if (!creature_ids || !Array.isArray(creature_ids)) {
+    return err('creature_ids (array) is required');
+  }
+
+  try {
+    const team = await saveTeam(env, userId, creature_ids, name);
+    return json({ success: true, team });
+  } catch (e) {
+    return err(`Failed to save team: ${e.message}`, 500);
+  }
+}
+
+
 // ─────────────────────────────────────────────────────────────
 // HEALTH CHECK
 // ─────────────────────────────────────────────────────────────
@@ -1018,6 +1055,17 @@ export default {
       if (url.pathname === '/api/comment' && request.method === 'POST') {
         return withCORS(await handleAddComment(request, env));
       }
+
+      // TEAMS (GET)
+      if (url.pathname === '/api/teams' && request.method === 'GET') {
+        return withCORS(await handleGetTeam(request, env));
+      }
+
+      // TEAMS (POST)
+      if (url.pathname === '/api/teams' && request.method === 'POST') {
+        return withCORS(await handleSaveTeam(request, env));
+      }
+
 
       // IMAGE PROXY
       if (url.pathname.startsWith('/api/image/') && request.method === 'GET') {
