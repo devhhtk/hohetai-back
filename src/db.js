@@ -819,6 +819,74 @@ export async function getBattle(env, battleId) {
 }
 
 /**
+ * NEW: Get comprehensive battle details in one go.
+ * Fetches battle, player profiles, teams, and creatures.
+ */
+export async function getBattleDetails(env, battleId) {
+  const battle = await getBattle(env, battleId);
+  if (!battle) return null;
+
+  // 1. Fetch Teams
+  const teamIds = [battle.player_a_team_id, battle.player_b_team_id].filter(Boolean);
+  const teamMap = {};
+  if (teamIds.length > 0) {
+    const teamUrl = `${env.SUPABASE_URL}/rest/v1/teams?id=in.(${teamIds.join(',')})&select=*`;
+    const teamResp = await fetch(teamUrl, { headers: supabaseHeaders(env) });
+    if (teamResp.ok) {
+      const teams = await teamResp.json();
+      teams.forEach(t => teamMap[t.id] = t);
+      battle.player_a_team = teamMap[battle.player_a_team_id] || null;
+      battle.player_b_team = teamMap[battle.player_b_team_id] || null;
+    }
+  }
+
+  // 2. Fetch Creatures for both squads
+  const creatureIds = [
+    ...(battle.player_a_team?.creature_ids || []),
+    ...(battle.player_b_team?.creature_ids || [])
+  ];
+
+  if (creatureIds.length > 0) {
+    const creatureUrl = `${env.SUPABASE_URL}/rest/v1/creatures?id=in.(${creatureIds.join(',')})&select=*`;
+    const creatureResp = await fetch(creatureUrl, { headers: supabaseHeaders(env) });
+    if (creatureResp.ok) {
+      const creatures = await creatureResp.json();
+      const creatureMap = {};
+      creatures.forEach(c => creatureMap[c.id] = c);
+
+      // Attach to teams
+      if (battle.player_a_team) {
+        battle.player_a_team.creatures = battle.player_a_team.creature_ids.map(id => creatureMap[id]).filter(Boolean);
+      }
+      if (battle.player_b_team) {
+        battle.player_b_team.creatures = battle.player_b_team.creature_ids.map(id => creatureMap[id]).filter(Boolean);
+      }
+    }
+  }
+
+  return battle;
+}
+
+/**
+ * Update battle status, log, or winner.
+ */
+export async function updateBattle(env, battleId, updates) {
+  const url = `${env.SUPABASE_URL}/rest/v1/battles?id=eq.${battleId}`;
+  const resp = await fetch(url, {
+    method: 'PATCH',
+    headers: supabaseHeaders(env),
+    body: JSON.stringify(updates),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Update battle failed: ${resp.status} ${err}`);
+  }
+  const rows = await resp.json();
+  return rows[0];
+}
+
+/**
  * Set a battle status to timeout.
  */
 export async function timeoutBattle(env, battleId) {

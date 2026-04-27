@@ -932,10 +932,33 @@ async function handleGetBattleStatus(request, env) {
   if (!battleId) return err('Battle ID required');
 
   try {
-    const battle = await getBattle(env, battleId);
+    const battle = await getBattleDetails(env, battleId);
     return json({ success: true, battle });
   } catch (e) {
     return err(`Failed to get battle: ${e.message}`, 500);
+  }
+}
+
+async function handleUpdateBattle(request, env) {
+  const userId = await getAuthUser(request, env);
+  if (!userId) return err('Unauthorized', 401);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return err('Invalid JSON body');
+  }
+
+  const { id, updates } = body;
+  if (!id) return err('Battle ID required');
+  if (!updates) return err('Updates required');
+
+  try {
+    const updated = await updateBattle(env, id, updates);
+    return json({ success: true, battle: updated });
+  } catch (e) {
+    return err(`Failed to update battle: ${e.message}`, 500);
   }
 }
 
@@ -1149,6 +1172,11 @@ export default {
       // BATTLE TIMEOUT (POST)
       if (url.pathname === '/api/battle/timeout' && request.method === 'POST') {
         return withCORS(await handleBattleTimeout(request, env));
+      }
+
+      // BATTLE UPDATE (POST)
+      if (url.pathname === '/api/battle/update' && request.method === 'POST') {
+        return withCORS(await handleUpdateBattle(request, env));
       }
 
 
