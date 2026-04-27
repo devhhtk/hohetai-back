@@ -187,6 +187,7 @@ export async function ensureProfileExists(env, userId) {
     last_login_date: today,
     last_reward_index: 0,
     last_claimed_day: null,
+    currency: 0,
     updated_at: new Date().toISOString(),
   };
 
@@ -905,5 +906,60 @@ export async function timeoutBattle(env, battleId) {
   }
   const rows = await resp.json();
   return rows[0];
+}
+
+/**
+ * Award XP and Tokens for battle completion.
+ */
+export async function awardBattleRewards(env, userId, xpAmount, currencyAmount) {
+  const profile = await ensureProfileExists(env, userId);
+  if (!profile) return null;
+
+  const oldLevel = profile.level || 1;
+  const newTotalXp = (profile.total_xp || 0) + xpAmount;
+  const newCurrency = (profile.currency || 0) + currencyAmount;
+  let newLevel = oldLevel;
+
+  const levels = await getLevels(env);
+  const sortedLevels = [...levels].sort((a, b) => a.level - b.level);
+
+  for (const lvl of sortedLevels) {
+    if (newTotalXp >= lvl.xp_required) {
+      if (lvl.level >= newLevel) {
+        newLevel = lvl.level + 1;
+      }
+    }
+  }
+
+  const leveledUp = newLevel > oldLevel;
+
+  const url = `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`;
+  const resp = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      ...supabaseHeaders(env),
+      'Prefer': 'return=representation',
+    },
+    body: JSON.stringify({
+      total_xp: newTotalXp,
+      level: newLevel,
+      currency: newCurrency,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    console.error(`[Supabase] Award Rewards Failed:`, resp.status, err);
+    return null;
+  }
+
+  const resultRows = await resp.json();
+  return {
+    profile: resultRows[0],
+    leveledUp,
+    xpGained: xpAmount,
+    currencyGained: currencyAmount
+  };
 }
 

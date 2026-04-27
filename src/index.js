@@ -6,7 +6,7 @@
 import { buildCreaturePrompt } from './prompt.js';
 import { generateImage } from './openai-image.js';
 import { uploadToB2, generateCreatureId } from './storage.js';
-import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward, getCreatureComments, toggleLike, addComment, saveTeam, getTeam, findOpponents, findWaitingBattle, createBattle, joinBattle, getBattle, timeoutBattle, getBattleDetails, updateBattle } from './db.js';
+import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward, getCreatureComments, toggleLike, addComment, saveTeam, getTeam, findOpponents, findWaitingBattle, createBattle, joinBattle, getBattle, timeoutBattle, getBattleDetails, updateBattle, awardBattleRewards } from './db.js';
 import { suggestName } from './sorting-hat.js';
 
 const STREAK_REWARDS = {
@@ -955,8 +955,42 @@ async function handleUpdateBattle(request, env) {
   if (!updates) return err('Updates required');
 
   try {
+    // 1. Handle Battle Completion Rewards
+    let rewards = null;
+    if (updates.status === 'completed') {
+      const battle = await getBattleDetails(env, id);
+      if (!battle) return err('Battle not found');
+
+      // Prevent double rewards if already completed
+      if (battle.status !== 'completed') {
+        const winnerId = updates.winner_id;
+        const playerAId = battle.player_a_id;
+        const playerBId = battle.player_b_id;
+
+        const loserId = winnerId === playerAId ? playerBId : playerAId;
+
+        // Award rewards
+        // Winner: 20 XP + 20 Tokens
+        // Loser: 10 XP
+        const rewardPromises = [];
+        if (winnerId) {
+          rewardPromises.push(awardBattleRewards(env, winnerId, 20, 20).then(res => ({ role: 'winner', res })));
+        }
+        if (loserId) {
+          rewardPromises.push(awardBattleRewards(env, loserId, 10, 0).then(res => ({ role: 'loser', res })));
+        }
+
+        const results = await Promise.all(rewardPromises);
+        rewards = {};
+        results.forEach(r => { rewards[r.role] = r.res; });
+        
+        // Attach rewards info to the battle record
+        updates.rewards = rewards;
+      }
+    }
+
     const updated = await updateBattle(env, id, updates);
-    return json({ success: true, battle: updated });
+    return json({ success: true, battle: updated, rewards });
   } catch (e) {
     return err(`Failed to update battle: ${e.message}`, 500);
   }
