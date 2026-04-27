@@ -719,7 +719,7 @@ export async function findWaitingBattle(env, excludeUserId) {
   // Battle is waiting if player_b_id is null and status is 'waiting'
   // and created_at is within the last 60 seconds (avoiding stale battles)
   const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
-  const url = `${env.SUPABASE_URL}/rest/v1/battles?status=eq.waiting&player_b_id=is.null&player_a_id=neq.${excludeUserId}&created_at=gt.${oneMinuteAgo}&order=created_at.asc&limit=1`;
+  const url = `${env.SUPABASE_URL}/rest/v1/battles?status=eq.waiting&player_b_id=is.null&player_b_team_id=is.null&player_a_id=neq.${excludeUserId}&created_at=gt.${oneMinuteAgo}&order=created_at.asc&limit=1`;
   
   const resp = await fetch(url, {
     headers: supabaseHeaders(env),
@@ -729,6 +729,7 @@ export async function findWaitingBattle(env, excludeUserId) {
   const rows = await resp.json();
   return rows[0] || null;
 }
+
 
 /**
  * Create a new battle record in 'waiting' status.
@@ -781,14 +782,60 @@ export async function joinBattle(env, battleId, userId, teamId) {
 
 /**
  * Get battle by ID.
+ * Refined to handle joined profiles safely.
  */
 export async function getBattle(env, battleId) {
-  const url = `${env.SUPABASE_URL}/rest/v1/battles?id=eq.${battleId}&select=*,player_a:profiles!player_a_id(display_name,avatar_url),player_b:profiles!player_b_id(display_name,avatar_url)`;
+  // We use a simpler select first to ensure we get the row even if joins fail
+  const url = `${env.SUPABASE_URL}/rest/v1/battles?id=eq.${battleId}&select=*`;
   const resp = await fetch(url, {
     headers: supabaseHeaders(env),
   });
 
   if (!resp.ok) return null;
   const rows = await resp.json();
-  return rows[0] || null;
+  const battle = rows[0];
+
+  if (!battle) return null;
+
+  // Optionally fetch profiles if they exist (Manual join to avoid PostgREST join issues with NULLs)
+  const userIds = [battle.player_a_id, battle.player_b_id].filter(Boolean);
+  if (userIds.length > 0) {
+    try {
+      const profileUrl = `${env.SUPABASE_URL}/rest/v1/profiles?id=in.(${userIds.join(',')})&select=id,display_name,avatar_url`;
+      const profResp = await fetch(profileUrl, { headers: supabaseHeaders(env) });
+      if (profResp.ok) {
+        const profiles = await profResp.json();
+        const profMap = {};
+        profiles.forEach(p => profMap[p.id] = p);
+        battle.player_a = profMap[battle.player_a_id] || null;
+        battle.player_b = profMap[battle.player_b_id] || null;
+      }
+    } catch (e) {
+      console.warn('[Battle] Profile join failed:', e.message);
+    }
+  }
+
+  return battle;
 }
+
+/**
+ * Set a battle status to timeout.
+ */
+export async function timeoutBattle(env, battleId) {
+  const url = `${env.SUPABASE_URL}/rest/v1/battles?id=eq.${battleId}`;
+  const resp = await fetch(url, {
+    method: 'PATCH',
+    headers: supabaseHeaders(env),
+    body: JSON.stringify({
+      status: 'timeout'
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Timeout battle failed: ${resp.status} ${err}`);
+  }
+  const rows = await resp.json();
+  return rows[0];
+}
+

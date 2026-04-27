@@ -6,7 +6,7 @@
 import { buildCreaturePrompt } from './prompt.js';
 import { generateImage } from './openai-image.js';
 import { uploadToB2, generateCreatureId } from './storage.js';
-import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward, getCreatureComments, toggleLike, addComment, saveTeam, getTeam, findOpponents, findWaitingBattle, createBattle, joinBattle, getBattle } from './db.js';
+import { createCreature, finalizeCreature, getCreature, getExploreCreatures, getUserProfile, getLevels, ensureProfileExists, addExperience, claimStreakReward, getCreatureComments, toggleLike, addComment, saveTeam, getTeam, findOpponents, findWaitingBattle, createBattle, joinBattle, getBattle, timeoutBattle } from './db.js';
 import { suggestName } from './sorting-hat.js';
 
 const STREAK_REWARDS = {
@@ -939,6 +939,26 @@ async function handleGetBattleStatus(request, env) {
   }
 }
 
+async function handleBattleTimeout(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return err('Invalid JSON body');
+  }
+
+  const { id } = body;
+  if (!id) return err('Battle ID required');
+
+  try {
+    const timedOut = await timeoutBattle(env, id);
+    return json({ success: true, battle: timedOut });
+  } catch (e) {
+    return err(`Failed to timeout battle: ${e.message}`, 500);
+  }
+}
+
+
 async function handleMatchmaking(request, env) {
   const userId = await getAuthUser(request, env);
   if (!userId) return err('Unauthorized', 401);
@@ -1125,6 +1145,12 @@ export default {
       if (url.pathname === '/api/battle/status' && request.method === 'GET') {
         return withCORS(await handleGetBattleStatus(request, env));
       }
+
+      // BATTLE TIMEOUT (POST)
+      if (url.pathname === '/api/battle/timeout' && request.method === 'POST') {
+        return withCORS(await handleBattleTimeout(request, env));
+      }
+
 
       // MATCHMAKING (GET)
       if (url.pathname === '/api/matchmaking' && request.method === 'GET') {
