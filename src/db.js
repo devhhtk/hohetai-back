@@ -630,11 +630,8 @@ export async function createNotification(env, data) {
   }
 }
 
-/**
- * Create or update a user team.
- */
 export async function saveTeam(env, userId, creatureIds, name = 'My Squad') {
-  // Check if team exists
+  // Check if an active team already exists for this user
   const checkUrl = `${env.SUPABASE_URL}/rest/v1/teams?user_id=eq.${userId}&select=id`;
   const checkResp = await fetch(checkUrl, {
     headers: supabaseHeaders(env),
@@ -643,22 +640,27 @@ export async function saveTeam(env, userId, creatureIds, name = 'My Squad') {
   const existing = await checkResp.json();
 
   if (Array.isArray(existing) && existing.length > 0) {
-    // Update
-    const updateUrl = `${env.SUPABASE_URL}/rest/v1/teams?id=eq.${existing[0].id}`;
+    // Update the existing team (we update by the primary key ID found)
+    const teamId = existing[0].id;
+    const updateUrl = `${env.SUPABASE_URL}/rest/v1/teams?id=eq.${teamId}`;
     const updateResp = await fetch(updateUrl, {
       method: 'PATCH',
       headers: supabaseHeaders(env),
       body: JSON.stringify({
         creature_ids: creatureIds,
         name: name,
-        updated_at: new Date().toISOString(),
+        is_active: true
       }),
     });
-    if (!updateResp.ok) throw new Error(`Update team failed: ${updateResp.status}`);
+
+    if (!updateResp.ok) {
+      const err = await updateResp.text();
+      throw new Error(`Update team failed: ${updateResp.status} ${err}`);
+    }
     const rows = await updateResp.json();
     return rows[0];
   } else {
-    // Create
+    // Create new team
     const addUrl = `${env.SUPABASE_URL}/rest/v1/teams`;
     const addResp = await fetch(addUrl, {
       method: 'POST',
@@ -667,9 +669,11 @@ export async function saveTeam(env, userId, creatureIds, name = 'My Squad') {
         user_id: userId,
         creature_ids: creatureIds,
         name: name,
-        created_at: new Date().toISOString(),
+        is_active: true,
+        created_at: new Date().toISOString()
       }),
     });
+
     if (!addResp.ok) {
       const err = await addResp.text();
       throw new Error(`Create team failed: ${addResp.status} ${err}`);
@@ -683,7 +687,7 @@ export async function saveTeam(env, userId, creatureIds, name = 'My Squad') {
  * Get a user's team.
  */
 export async function getTeam(env, userId) {
-  const url = `${env.SUPABASE_URL}/rest/v1/teams?user_id=eq.${userId}&select=*`;
+  const url = `${env.SUPABASE_URL}/rest/v1/teams?user_id=eq.${userId}&is_active=eq.true&select=*`;
   const resp = await fetch(url, {
     headers: supabaseHeaders(env),
   });
